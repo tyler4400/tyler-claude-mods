@@ -65,9 +65,12 @@ export function headTail(text: string, head: number, tail: number): string {
   return `${chars.slice(0, head).join('')}\n[…中间省略 ${omitted} 字 / ${omitted} chars omitted…]\n${chars.slice(-tail).join('')}`
 }
 
+// 中文句末标点直接断句；英文标点后面要有空白或到结尾，避免把版本号 0.3.3 当成句号
+const SENTENCE_END = /(?<=[。！？])\s*|(?<=[.!?])(?:\s+|$)/
+
 /** 一句话、最多 max 个字符；英文在词边界截断，中文直接截断 */
 export function clip(text: string, max = FIELD_MAX): string {
-  const first = text.trim().split(/(?<=[.!?。！？])\s*/)[0] ?? ''
+  const first = text.trim().split(SENTENCE_END)[0] ?? ''
   const chars = Array.from(first)
   if (chars.length <= max) return first.replace(/[.。]$/, '')
   const cut = chars.slice(0, max - 1).join('')

@@ -161,7 +161,8 @@ async function summarize($: Engine, answer: string, stats: TurnStats | undefined
   const record: SessionRecord = {
     recap: parsed.recap,
     overall: parsed.overall || previous?.overall || '',
-    turn: countTurns(messages),
+    // 上下文压缩后重启，session.messages() 只剩压缩后的消息，轮次不能因此倒退
+    turn: Math.max(countTurns(messages), (previous?.turn ?? 0) + 1),
     lang,
     updatedAt: await $.clock.now(),
     detail: previous?.detail,

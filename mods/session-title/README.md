@@ -1,27 +1,27 @@
+English | [简体中文](README.zh-CN.md)
+
 # session-title
 
-Keeps the Claude Code session title in the form `前缀｜MMDD｜主体` (prefix | month-day | subject), rewritten by Haiku after each turn without touching the main model's context.
+After each turn, Haiku checks the session title against the rules in [title-rules.md](title-rules.md). Titles take the form `前缀｜MMDD｜主体` (prefix｜month-day｜subject), for example `探索｜1013｜ClaudeCode mods调研`. The rules are written for Chinese titles; edit them to suit your own style.
 
-每轮结束后用 Haiku 按 [title-rules.md](title-rules.md) 的规则检查会话标题，格式为 `前缀｜MMDD｜主体`，例如 `探索｜1013｜ClaudeCode mods调研`。
+- **Checked every turn**: the model first writes one line on what the session is **working on now**, then decides whether to keep or change the title. If the opening topic has been replaced by work that has gone on for several turns (say, from surveying mods to rewriting and publishing one), the subject is rewritten. A question, error or detour that lasts a turn or two does not count.
+- **Stable by default**: the title is kept when it is well formed, dated today and still names what the session is working on.
+- If you reject a subject change once, the subject is locked and only the prefix and date are adjusted from then on. If you reject that too, it stops trying for that session.
+- In the desktop app it sets the title with the app's own session tools; in a terminal it writes the title through a hook the next time you submit a prompt.
+- It calls Haiku, so it adds nothing to the main model's context, but the calls count toward your usage.
+- Records live in `$.store` (`~/.claude/plugins/store/`); records not updated for 30 days are removed.
 
-- 每轮都检查：模型先用一句话写出会话**现在持续在做的事**，再决定保持还是改。开场话题被后来持续多轮的工作取代（比如从调研 mods 变成改写并发布某个 mod），就改主体；一两轮的临时插问、报错不算偏离。
-- 稳定优先：格式对、日期是今天、标题仍说得出现在在做的事时保持不变。
-- 你拒绝过一次改主体后，主体会被锁定，之后只调整前缀和日期；连这个也被拒绝，本会话就不再尝试。
-- desktop app 里通过 app 自带的会话管理工具改标题；终端里通过下一次提交 prompt 时的 hook 写入。
-- 调用的是 Haiku，不占主模型上下文，但会计入用量。
-- 记录存在 `$.store`（`~/.claude/plugins/store/`），30 天没更新的会话记录会被清理。
-
-## 安装
+## Install
 
 ```
 /plugin install session-title --marketplace tyler4400/tyler-claude-mods
 ```
 
-或者：
+Or:
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install session-title@tyler-claude-mods --scope user
 ```
 
-规则在 [title-rules.md](title-rules.md)，可以按自己的习惯修改前缀池。
+The rules are in [title-rules.md](title-rules.md); change the prefix list to match your own habits.

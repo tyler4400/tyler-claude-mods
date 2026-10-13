@@ -31,6 +31,7 @@ describe('clip', () => {
   })
   test('只取第一句', async () => {
     expect(clip('先做这个。再做那个。')).toBe('先做这个')
+    expect(clip('升到 0.3.3，测试通过. Next step')).toBe('升到 0.3.3，测试通过')
   })
   test('英文在词边界截断', async () => {
     expect(clip('alpha beta gamma delta epsilon', 20)).toBe('alpha beta gamma…')

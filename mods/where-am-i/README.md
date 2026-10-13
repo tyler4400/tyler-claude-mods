@@ -1,94 +1,100 @@
+English | [简体中文](README.zh-CN.md)
+
 # where-am-i
 
-A recap card above the Claude Code prompt: the goal, what is happening now, the next step and what waits on you. The recap is saved per session, so it is still there after a restart or when you open an old session. Open the details for a one-paragraph summary of the session that never enters the conversation, or fold it into a one-line capsule.
+A recap card above the Claude Code prompt: the goal, what is happening now, the next step and what waits on you. The recap is saved per conversation, so it is still there after you restart the app or open a session from days ago. Made for long sessions: step away, come back, and pick up where you left off at a glance.
 
-输入框上方的会话摘要卡片。适合长会话：离开一会儿再回来，或者几天后回看旧会话，一眼就能接上。
+<img src="docs/card-waiting.en.svg" alt="Card waiting on you, with the details open" width="720">
 
-## 卡片上有什么
+<img src="docs/card-idle.en.svg" alt="Card while idle" width="720">
 
-固定三行：
+The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/render_screenshots.py).
 
-1. **🎯 目标**：整个会话的目标，只在明显变化时才改。右侧是 **第 N 轮 · 更新时间**（当天只显示时间，其他日子带日期）。
-2. **● 现在**：Claude 工作时显示 **本轮：一句话目标**，右侧是 **调用次数 · 改了几个文件 · 已用时**（每秒更新），不重复原生界面里逐条跳动的工具状态；一轮结束后左侧显示这一轮做了什么，右侧保留这一轮的最终统计。
-3. **⏳ 等你** 或 **→ 下一步**：Claude 需要你处理什么时显示"等你"，否则显示下一步。右侧是 **详情** 和 **折叠** 两个按钮。
+## What the card shows
 
-窗口变窄时，右侧的轮次、时间和按钮保持完整，截断的是左侧文字。
+Always three lines:
 
-- **卡片边框颜色**表示状态：工作中、等你、空闲各一种颜色。
-- **详情**：隔了很久回来、忘了这个会话在做什么时，用一段两三句话（中文最多 180 字）帮你接上：整个会话的主线和原因、做到哪了、接下来该做什么（包括说好但还没做的事）。从主线讲起，不会只讲最近的小问题。只画在卡片里，**不进入对话上下文**。按轮次缓存，没有新的一轮就不重新生成；展开状态下有新的一轮会自动刷新。
-- **折叠**：把卡片收成一行胶囊（状态点、目标、等你标记、轮次），点胶囊上的目标恢复。折叠状态跨会话保留。
-- `/where`：打开卡片并展开详情。注意：命令本身会在对话里留下一行提示文字。
+1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (time only for today, date and time otherwise).
+2. **● Now**: while Claude works, **This turn: what it is doing**, in one phrase; after the turn, what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
+3. **⏳ waiting on you** or **→ next**: what Claude needs from you, if anything; otherwise the next step. On the right: the **Details** and **Fold** buttons.
 
-## 安装
+When the window gets narrow, the turn, time, stats and buttons on the right stay whole and the text on the left is cut instead.
 
-在终端的 Claude Code 里：
+- **The border colour** shows the state: working, waiting on you, or idle.
+- **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
+- **Fold**: shrinks the card to a one-line capsule (state dot, goal, waiting mark, turn). Click the goal in the capsule to unfold. The fold state is kept across sessions.
+- `/where`: unfolds the card and opens the details. The command itself leaves one line of text in the conversation.
+
+## Install
+
+In Claude Code in a terminal:
 
 ```
 /plugin install where-am-i --marketplace tyler4400/tyler-claude-mods
 ```
 
-或者在 shell 里：
+Or from a shell:
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install where-am-i@tyler-claude-mods --scope user
 ```
 
-第一轮结束后卡片出现。
+The card appears after the first turn ends.
 
-## 配置
+## Configuration
 
-在 `/config` 或 `/plugin configure where-am-i@tyler-claude-mods` 里修改，改完自动生效。
+Change these in `/config` or `/plugin configure where-am-i@tyler-claude-mods`. Changes apply right away.
 
-| 选项 | 默认 | 说明 |
+| Option | Default | Meaning |
 | --- | --- | --- |
-| `language` | `auto` | 摘要语言：`auto` 按你最近的消息判断中文或英文；`zh`；`en` |
-| `model` | `haiku` | 生成摘要和详情用的模型 |
-| `accentColor` | `suggestion` | 工作中的颜色：主题色名（`suggestion`、`claude`、`success`、`warning`、`error` 等）或 `#hex` |
-| `waitingColor` | `warning` | 等你处理时的颜色 |
-| `idleColor` | `success` | 空闲时的颜色 |
-| `borderStyle` | `round` | 卡片边框：`round`、`single`、`bold`、`double`、`none` |
-| `density` | `comfortable` | 行距：`comfortable` 行与行之间空一行；`compact` 紧凑 |
-| `showMeta` | `true` | 显示"第 N 轮 · 时间" |
-| `showNext` | `true` | 没有等你处理的事时，第三行显示"下一步" |
-| `retentionDays` | `30` | 超过这么多天没更新的会话摘要会被清理 |
+| `language` | `auto` | Recap language: `auto` follows your latest messages (Chinese or English); `zh`; `en` |
+| `model` | `haiku` | Model that writes the recap and the details |
+| `accentColor` | `suggestion` | Colour while working: a theme colour name (`suggestion`, `claude`, `success`, `warning`, `error`, …) or `#hex` |
+| `waitingColor` | `warning` | Colour while waiting on you |
+| `idleColor` | `success` | Colour while idle |
+| `borderStyle` | `round` | Card border: `round`, `single`, `bold`, `double`, `none` |
+| `density` | `comfortable` | Line spacing: `comfortable` leaves a blank row between lines; `compact` does not |
+| `showMeta` | `true` | Show "turn N · time" |
+| `showNext` | `true` | Show "next" on the third line when nothing waits on you |
+| `retentionDays` | `30` | Recaps not updated for this many days are removed |
 
-## 怎么工作的
+## How it works
 
-**每轮两次模型调用。** 你发出消息时，后台调用一次 `haiku`，根据你的消息（开头 1000 + 结尾 500 字）和上一份摘要写出"本轮：…"那一句话，输出上限 80 token。
+**Two model calls per turn.** When you send a message, one `haiku` call writes the "This turn: …" phrase from your message (first 1000 + last 500 characters) and the previous recap. Output is capped at 80 tokens.
 
-主对话每一轮结束后，再调用一次 `haiku` 更新摘要，输入是：
+After each turn of the main conversation, another `haiku` call updates the recap. Its input is:
 
-- 上一份摘要和**整个会话的滚动总结**（每轮在上一份基础上更新，最多约 400 字，依次是主线、已完成的里程碑、当前的小问题、还没做的待办）；
-- 你在这个会话里发过的全部消息，每条取开头 150 字，超过 15 条时保留最早 3 条和最近 12 条，用来认出主线，避免被眼前的小问题带偏；
-- 你这一轮的消息（开头 1000 字 + 结尾 500 字）；
-- 这一轮工具调用的简短标签（命令的描述或前 60 个字符、文件路径、搜索词）；
-- Claude 的回复（开头 1500 字 + 结尾 1500 字）。
+- the previous recap and **a running summary of the whole session** (updated every turn from the previous one, about 400 characters at most: the mainline, milestones reached, the current small problem, open to-dos);
+- every message you sent in the session, the first 150 characters of each; past 15 messages it keeps the first 3 and the latest 12. This is how it tells the mainline from the problem at hand;
+- your message for this turn (first 1000 + last 500 characters);
+- short labels for this turn's tool calls (a command's description or first 60 characters, file paths, search terms);
+- Claude's reply (first 1500 + last 1500 characters).
 
-超长内容保留头尾、中间注明省略了多少字，并告诉模型这是有意截断，避免它以为信息不完整。输出上限 700 token。
+Long text keeps its head and tail with a note saying how much was cut, and the model is told the cut is on purpose so it does not treat the text as incomplete. Output is capped at 700 tokens.
 
-**展开详情**时再调用一次，输入是滚动总结、最新卡片、你发过的全部消息（同上）和最近 6 条消息（每条开头 600 + 结尾 600 字），输出两三句话，上限 400 token。
+**Opening the details** makes one more call. Its input is the running summary, the latest card, every message you sent (as above) and the last 6 messages (first 600 + last 600 characters each). It writes two or three sentences, capped at 400 tokens.
 
-这些都是真实的模型请求，会计入你的用量。
+These are real model requests and count toward your usage.
 
-**数据存在哪：** Claude Code 为每个 plugin 提供的 `$.store`，即 `~/.claude/plugins/store/` 下本 plugin 的 JSON 文件。每个对话一条记录（最新摘要、滚动总结、轮次、更新时间、语言、缓存的详情），外加一个折叠偏好。超过 `retentionDays` 没更新的记录在会话启动时清理。
+**Where the data lives:** in `$.store`, which Claude Code gives each plugin as a JSON file under `~/.claude/plugins/store/`. There is one record per conversation (latest recap, running summary, turn, update time, language, last turn's stats, cached details) plus the fold preference. Records not updated for `retentionDays` are removed when a session starts.
 
-app 重启后续接对话、或 fork 对话时，Claude Code 会换一个新的 session id，但对话内容原样带过去。所以记录不按 session id 存，而是按"工作目录 + 第一条消息"的指纹认出同一个对话。
+When you resume a conversation after restarting the app, or fork one, Claude Code gives it a new session id but carries the conversation over unchanged. So records are not keyed by session id: the same conversation is recognised by a fingerprint of the working directory and its first message.
 
-**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区。没有其他网络请求，不读写 store 以外的文件。
+**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone. It makes no other network requests and reads or writes no files outside its store.
 
-Hooks：`session.start`、`session.end`、`prompt.submit`、`tool.call`、`turn.complete`、`command.run`（`/where`）、`ui.render`（`AbovePrompt`）。
+Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.complete`, `command.run` (`/where`), `ui.render` (`AbovePrompt`).
 
-## 局限
+## Limitations
 
-- 第一轮结束前没有摘要，卡片不显示。
-- fork 出来的对话和原对话指纹相同，会共用同一张卡片，直到其中一个有新的一轮把它覆盖。
-- 续接前如果上下文被压缩过，第一条消息会变成压缩摘要，指纹对不上，卡片要等新的一轮结束后才重新出现。
-- 模型调用失败或返回格式不对时，保留上一份摘要。
-- 轮次是会话里你发出的、带文字的消息数，斜杠命令也会被计入。
-- 只在 Claude Code 的 desktop 和终端里绘制；VS Code 插件和 `claude -p` 里不显示。
-- 在 Claude Code 2.1.294 / 2.1.295 上用 `claude plugin validate` 和 `claude plugin test` 验证过。
+- No card before the first turn ends.
+- A forked conversation has the same fingerprint as the original, so the two share one card until a new turn in either overwrites it.
+- If the context was compacted before you resume, the first message becomes the compaction summary, the fingerprint no longer matches, and the card comes back only after the next turn ends.
+- If a model call fails or returns something malformed, the previous recap stays.
+- The turn number counts your messages with text in the session, slash commands included. After compaction it keeps counting up and never goes back.
+- Drawn only in Claude Code's desktop app and terminal; not in the VS Code extension or `claude -p`.
+- Checked with `claude plugin validate` and `claude plugin test` on Claude Code 2.1.294 / 2.1.295.
 
-## 致谢
+## Credits
 
-fork 自 [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) 的 where-am-i（MIT，Copyright (c) 2026 Hamza Zafar）。在原版基础上改为卡片样式，加上持久化、滚动总结、语言跟随、详情、折叠和可配置项。
+Forked from where-am-i in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar). This version turns it into a card and adds persistence, the running summary, language following, details, folding and options.
