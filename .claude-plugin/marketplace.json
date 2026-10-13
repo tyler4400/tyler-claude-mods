@@ -1,0 +1,20 @@
+{
+  "name": "tyler-claude-mods",
+  "description": "tyler4400 的 Claude Code mods：会话摘要卡片、自动会话标题等",
+  "owner": {
+    "name": "tyler4400",
+    "url": "https://github.com/tyler4400"
+  },
+  "plugins": [
+    {
+      "name": "where-am-i",
+      "source": "./mods/where-am-i",
+      "description": "输入框上方的会话摘要卡片，跨重启保留，可展开详情、折叠成胶囊"
+    },
+    {
+      "name": "session-title",
+      "source": "./mods/session-title",
+      "description": "用 Haiku 按「前缀｜MMDD｜主体」规则自动维护会话标题"
+    }
+  ]
+}

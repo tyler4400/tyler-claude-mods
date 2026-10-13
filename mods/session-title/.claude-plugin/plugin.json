@@ -1,0 +1,6 @@
+{
+  "name": "session-title",
+  "version": "0.1.4",
+  "description": "用 Haiku 按「前缀｜MMDD｜主体」规则自动维护会话标题，不占主模型上下文",
+  "author": { "name": "tyler4400" }
+}

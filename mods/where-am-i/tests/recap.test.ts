@@ -1,0 +1,109 @@
+import { describe, expect, test } from 'claude-code/testing'
+
+import { clip, countTurns, detectLang, formatElapsed, formatTime, headTail, parseIntent, parseOffset, parseSummary, summaryRequest, userTrail } from '../hooks/recap'
+
+describe('detectLang', () => {
+  test('中文为主判为 zh，夹杂英文标识符也算', async () => {
+    expect(detectLang('帮我安装 where-am-i 并看看 $.store 存在哪里')).toBe('zh')
+  })
+  test('纯英文判为 en', async () => {
+    expect(detectLang('install where-am-i and check the store')).toBe('en')
+  })
+})
+
+describe('headTail', () => {
+  test('短文本原样返回', async () => {
+    expect(headTail('abc', 2, 2)).toBe('abc')
+  })
+  test('长文本保留头尾并注明省略字数', async () => {
+    const out = headTail('一二三四五六七八九十', 2, 3)
+    expect(out.startsWith('一二\n')).toBe(true)
+    expect(out.endsWith('\n八九十')).toBe(true)
+    expect(out).toContain('省略 5 字')
+  })
+})
+
+describe('clip', () => {
+  test('中文超长时直接截断并加省略号', async () => {
+    const out = clip('确'.repeat(100), 10)
+    expect(Array.from(out).length).toBe(10)
+    expect(out.endsWith('…')).toBe(true)
+  })
+  test('只取第一句', async () => {
+    expect(clip('先做这个。再做那个。')).toBe('先做这个')
+  })
+  test('英文在词边界截断', async () => {
+    expect(clip('alpha beta gamma delta epsilon', 20)).toBe('alpha beta gamma…')
+  })
+})
+
+describe('parseSummary', () => {
+  test('容忍代码块，去掉破折号', async () => {
+    const parsed = parseSummary('```json\n{"goal":"跨重启保留摘要","now":"写完卡片 — 待测试","waiting":"","next":"跑测试","overall":"决定 fork where-am-i"}\n```')
+    expect(parsed?.recap).toEqual({ goal: '跨重启保留摘要', now: '写完卡片, 待测试', waiting: '', next: '跑测试' })
+    expect(parsed?.overall).toBe('决定 fork where-am-i')
+  })
+  test('没有 goal 视为无效', async () => {
+    expect(parseSummary('{"now":"x"}')).toBeNull()
+  })
+})
+
+describe('summaryRequest', () => {
+  test('带上上一份摘要和总体总结，并指定语言', async () => {
+    const req = summaryRequest({
+      lang: 'zh',
+      previous: { recap: { goal: 'g', now: 'n', waiting: '', next: 'x' }, overall: '之前的总结', turn: 3, lang: 'zh', updatedAt: 0 },
+      prompt: '开始',
+      tools: ['编辑 a.ts'],
+      answer: '好'.repeat(5000),
+      messages: [{ role: 'user', text: '做一组 mods 并发布' }, { role: 'user', text: '开始' }],
+    })
+    expect(req.prompt).toContain('"goal":"g"')
+    expect(req.prompt).toContain('之前的总结')
+    expect(req.prompt).toContain('省略 2000 字')
+    expect(req.system).toContain('简体中文')
+    expect(req.prompt).toContain('1. 做一组 mods 并发布')
+  })
+})
+
+describe('userTrail', () => {
+  test('去掉 system-reminder，太多时保留最早和最近的消息', async () => {
+    const messages = Array.from({ length: 20 }, (_, i) => ({ role: 'user' as const, text: `消息${i + 1}<system-reminder>x</system-reminder>` }))
+    const trail = userTrail([...messages, { role: 'assistant', text: '回复' }])
+    expect(trail).toContain('1. 消息1')
+    expect(trail).toContain('20. 消息20')
+    expect(trail).toContain('省略 5 条')
+    expect(trail).not.toContain('消息5\n')
+    expect(trail).not.toContain('system-reminder')
+    expect(trail).not.toContain('回复')
+  })
+})
+
+describe('countTurns / formatTime / parseOffset', () => {
+  test('只数有文字的 user 行', async () => {
+    expect(countTurns([
+      { role: 'user', text: '你好' },
+      { role: 'assistant', text: '好' },
+      { role: 'user', text: '' },
+      { role: 'user', text: '继续' },
+    ])).toBe(2)
+  })
+  test('同一天只显示时间，跨天带日期', async () => {
+    const offset = parseOffset('+0800')
+    expect(offset).toBe(480)
+    const at = Date.UTC(2026, 9, 13, 9, 5) // 本地 17:05
+    expect(formatTime(at, at + 60_000, offset)).toBe('17:05')
+    expect(formatTime(at, at + 2 * 86_400_000, offset)).toBe('10/13 17:05')
+  })
+})
+
+describe('formatElapsed / parseIntent', () => {
+  test('按时长选单位', async () => {
+    expect(formatElapsed(45_000, 'zh')).toBe('45秒')
+    expect(formatElapsed(92_000, 'zh')).toBe('1分32秒')
+    expect(formatElapsed(3_900_000, 'en')).toBe('1h05m')
+  })
+  test('去掉引号，只取第一行', async () => {
+    expect(parseIntent('「改卡片布局」\n多余的解释')).toBe('改卡片布局')
+  })
+})
