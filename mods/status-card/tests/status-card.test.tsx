@@ -25,7 +25,7 @@ function engine(on: any, store: Map<string, unknown>, sessionId = 's1') {
   on('tool.call', () => ({ result: {}, text: 'ok' }))
   on('turn.complete', () => ({ text: '' }))
   on('model.complete', (_$: any, e: any) => ({
-    value: { isAnswered: true, text: e.maxTokens === 80 ? '把详情上限改成 180 字' : SUMMARY, usage: { input_tokens: 1, output_tokens: 1 } },
+    value: { isAnswered: true, text: e.maxTokens === 150 ? '把详情上限改成 180 字' : SUMMARY, usage: { input_tokens: 1, output_tokens: 1 } },
   }))
   on('session.messages', () => ({ value: [{ role: 'user', text: '帮我把摘要做成卡片', toolUses: [] }, { role: 'assistant', text: '好', toolUses: [] }] }))
   on('ui.render', ($: any, e: any) => {

@@ -327,7 +327,7 @@ export const register: Register = (on, options) => {
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
     // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
-    const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt, 40)}` : record.recap.now
+    const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt)}` : record.recap.now
 
     if (await read($, isFolded)) {
       // 胶囊依次优先显示：工作中这一轮在做什么、等你处理的事、目标；放不下时截断这段文字，右侧的时间、用时和展开按钮保持完整

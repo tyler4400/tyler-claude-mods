@@ -3,7 +3,7 @@ import type { PromptOrigin } from 'claude-code'
 
 import type { Lang, Recap, SessionRecord, TurnStats } from '../types'
 
-const FIELD_MAX = 70
+const FIELD_MAX = 100
 const OVERALL_MAX = 400
 
 const LABELS = {
@@ -160,7 +160,7 @@ export function summaryRequest(input: {
     `Tools used this turn: ${input.tools.join('; ') || 'none'}`,
     `The assistant's reply:\n${headTail(input.answer, 1500, 1500)}`,
   ].join('\n\n')
-  return { system, prompt, maxTokens: 700 }
+  return { system, prompt, maxTokens: 900 }
 }
 
 export function detailRequest(input: { lang: Lang; record: SessionRecord; messages: readonly Message[] }) {
@@ -193,19 +193,19 @@ export function intentRequest(input: { lang: Lang; previous: SessionRecord | nul
   const system = [
     'Say in one short phrase what the assistant is about to do in this turn of a coding session, based on the person\'s message.',
     'If the message is short (like "ok", "start", "go on"), infer it from the previous recap\'s next step and what was waiting on the person.',
-    'At most 40 Chinese characters or 20 English words. Reply with the phrase only: no quotes, no trailing period.',
+    `At most ${FIELD_MAX} Chinese characters or 50 English words. Reply with the phrase only: no quotes, no trailing period.`,
     LANG_RULE[input.lang],
   ].join('\n')
   const prompt = [
     `Previous recap: ${input.previous ? JSON.stringify(input.previous.recap) : 'none'}`,
     `The person's message:\n${headTail(input.prompt, 1000, 500)}`,
   ].join('\n\n')
-  return { system, prompt, maxTokens: 80 }
+  return { system, prompt, maxTokens: 150 }
 }
 
 export function parseIntent(text: string): string {
   const line = text.trim().split('\n')[0] ?? ''
-  return clip(line.replace(/^["'“”「」]+|["'“”「」]+$/g, ''), 40)
+  return clip(line.replace(/^["'“”「」]+|["'“”「」]+$/g, ''))
 }
 
 /** 已用时：45s、1m32s、1h05m；中文用 秒/分/时 */
