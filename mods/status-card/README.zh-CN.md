@@ -1,6 +1,6 @@
 [English](README.md) | 简体中文
 
-# goal-card
+# status-card
 
 输入框上方的会话摘要卡片：目标、现在在做什么、等你处理的事。摘要按对话保存，重启 app 或几天后回看旧会话，卡片还在。适合长会话：离开一会儿再回来，一眼就能接上。
 
@@ -31,21 +31,28 @@
 在终端的 Claude Code 里：
 
 ```
-/plugin install goal-card --marketplace tyler4400/tyler-claude-mods
+/plugin install status-card --marketplace tyler4400/tyler-claude-mods
 ```
 
 或者在 shell 里：
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
-claude plugin install goal-card@tyler-claude-mods --scope user
+claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-第一轮结束后卡片出现。
+第一轮结束后卡片出现。在一轮进行中途装上的话，这一轮的卡片右侧没有调用次数和用时，下一轮开始显示。
+
+**从 where-am-i 或 goal-card 升级：** 这是同一个 mod 的旧名字。先卸载旧的再装 status-card；摘要记录按 plugin 名分开保存，旧记录不会带过来。
+
+```bash
+claude plugin uninstall where-am-i@tyler-claude-mods   # 或 goal-card@tyler-claude-mods
+claude plugin install status-card@tyler-claude-mods --scope user
+```
 
 ## 配置
 
-在 `/config` 或 `/plugin configure goal-card@tyler-claude-mods` 里修改，改完自动生效。
+在 `/config` 或 `/plugin configure status-card@tyler-claude-mods` 里修改，改完自动生效。
 
 | 选项 | 默认 | 说明 |
 | --- | --- | --- |
@@ -97,4 +104,4 @@ Hooks：`session.start`、`session.end`、`prompt.submit`、`tool.call`、`turn.
 
 ## 致谢
 
-借鉴了 [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) 中 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 的源码（MIT，Copyright (c) 2026 Hamza Zafar），原名 where-am-i，为避免和原版重名改为 goal-card。在原版基础上改为卡片样式，加上持久化、滚动总结、语言跟随、详情、折叠和可配置项。
+借鉴了 [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) 中 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 的源码（MIT，Copyright (c) 2026 Hamza Zafar），原名 where-am-i，为避免和原版重名改为 status-card。在原版基础上改为卡片样式，加上持久化、滚动总结、语言跟随、详情、折叠和可配置项。

@@ -28,7 +28,7 @@ export type DetailView = { status: 'loading' | 'ready' | 'error'; text: string }
 
 declare module 'claude-code' {
   interface PluginState {
-    'goal-card': {
+    'status-card': {
       record: SessionRecord | null
       progress: TurnProgress | null
       clockNow: number

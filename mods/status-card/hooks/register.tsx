@@ -1,4 +1,4 @@
-// goal-card：输入框上方的会话摘要卡片，摘要存进 $.store，重启或回看旧会话时恢复。
+// status-card：输入框上方的会话摘要卡片，摘要存进 $.store，重启或回看旧会话时恢复。
 // 借鉴 hamzafer/claude-code-mods 中 where-am-i 的源码（MIT），改为卡片样式并加上持久化、滚动总结和语言跟随。
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
@@ -35,13 +35,13 @@ const MAX_LOG = 20
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit'])
 
 // 由宿主保管，热重载后仍在；跨进程的部分另存 $.store
-const recordAtom = atom({ plugin: 'goal-card', key: 'record' } as const, null as SessionRecord | null)
-const progress = atom({ plugin: 'goal-card', key: 'progress' } as const, null as TurnProgress | null)
+const recordAtom = atom({ plugin: 'status-card', key: 'record' } as const, null as SessionRecord | null)
+const progress = atom({ plugin: 'status-card', key: 'progress' } as const, null as TurnProgress | null)
 // 工作期间每秒写一次，让已用时跟着走
-const clockNow = atom({ plugin: 'goal-card', key: 'clockNow' } as const, 0)
-const isExpanded = atom({ plugin: 'goal-card', key: 'isExpanded' } as const, false)
-const isFolded = atom({ plugin: 'goal-card', key: 'isFolded' } as const, false)
-const detailView = atom({ plugin: 'goal-card', key: 'detail' } as const, null as DetailView | null)
+const clockNow = atom({ plugin: 'status-card', key: 'clockNow' } as const, 0)
+const isExpanded = atom({ plugin: 'status-card', key: 'isExpanded' } as const, false)
+const isFolded = atom({ plugin: 'status-card', key: 'isFolded' } as const, false)
+const detailView = atom({ plugin: 'status-card', key: 'detail' } as const, null as DetailView | null)
 
 type Settings = {
   language: unknown

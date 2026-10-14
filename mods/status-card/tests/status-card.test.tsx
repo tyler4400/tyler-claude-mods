@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 
 const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false, maxRows: 20, bodyColumns: 120 } }
 
-const SUMMARY = '{"goal":"让摘要跨重启保留","now":"写完卡片","waiting":"你确认样式","next":"跑测试","overall":"fork 了 goal-card"}'
+const SUMMARY = '{"goal":"让摘要跨重启保留","now":"写完卡片","waiting":"你确认样式","next":"跑测试","overall":"fork 了 status-card"}'
 
 // 代替 mod 下面的引擎
 function engine(on: any, store: Map<string, unknown>, sessionId = 's1') {
@@ -43,7 +43,7 @@ async function oneTurn($: any, clock: any) {
   await clock.settle()
 }
 
-describe('goal-card', () => {
+describe('status-card', () => {
   test('后台通知等不是你打的字，不会把中文会话切成英文', async ($, on) => {
     const store = new Map<string, unknown>()
     const clock = engine(on, store)
@@ -55,7 +55,7 @@ describe('goal-card', () => {
     const convKey = [...store.keys()].find(k => k.startsWith('conv:'))!
     expect((store.get(convKey) as any).lang).toBe('zh')
 
-    await $.prompt.submit({ text: 'Please rename the mod to goal-card' } as any)
+    await $.prompt.submit({ text: 'Please rename the mod to status-card' } as any)
     await $.turn.complete({ reason: 'answer', answer: 'done', durationMs: 1 } as any)
     await clock.settle()
     expect((store.get(convKey) as any).lang).toBe('en')
@@ -66,7 +66,7 @@ describe('goal-card', () => {
     const clock = engine(on, store)
     await oneTurn($, clock)
 
-    const ui = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND } as any)
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /等你：你确认样式/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^✅ 写完卡片$/ })).toBeDefined()
@@ -79,7 +79,7 @@ describe('goal-card', () => {
     expect((store.get('id:s1') as any).conv).toBe(convKey)
     const saved = store.get(convKey) as any
     expect(saved.recap.goal).toBe('让摘要跨重启保留')
-    expect(saved.overall).toBe('fork 了 goal-card')
+    expect(saved.overall).toBe('fork 了 status-card')
     expect(saved.lang).toBe('zh')
   })
 
@@ -91,7 +91,7 @@ describe('goal-card', () => {
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
     await clock.settle()
 
-    const ui = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND } as any)
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /旧会话的目标/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /第 7 轮/ })).toBeDefined()
     // 没有等你处理的事时第三行不显示下一步
@@ -110,7 +110,7 @@ describe('goal-card', () => {
     const clock = engine(on, store)
     await oneTurn($, clock)
 
-    const ui = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND } as any)
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ key: 'fold', text: '折叠' })).toBeDefined()
     await ui.press({ key: 'fold' })
     expect(store.get('pref:folded')).toBe(true)
@@ -131,7 +131,7 @@ describe('goal-card', () => {
     const clock = engine(on, store)
     await oneTurn($, clock)
 
-    const ui = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND } as any)
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     await ui.press({ key: 'detail' })
     await clock.settle()
     const saved = store.get([...store.keys()].find(k => k.startsWith('conv:'))!) as any
@@ -151,7 +151,7 @@ describe('goal-card', () => {
     await $.tool.call({ tool: 'Read', file_path: '/work/mods/README.md' } as any)
     await clock.advance(92_000)
 
-    const ui = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
     expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
@@ -164,7 +164,7 @@ describe('goal-card', () => {
 
     await $.turn.complete({ reason: 'answer', answer: '改好了', durationMs: 1 } as any)
     await clock.settle()
-    const idle = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND } as any)
+    const idle = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await idle.find({ type: 'Text', text: /本轮/ })).toBeUndefined()
     // 轮到你时保留这一轮的最终统计，并写进 store
     expect(await idle.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
@@ -187,7 +187,7 @@ describe('goal-card', () => {
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
     await clock.settle()
 
-    const ui = await $.ui.mount({ plugin: 'goal-card', surface: 'desktop', ...BAND } as any)
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
     await ui.unmount()
   })

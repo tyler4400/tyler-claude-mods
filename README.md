@@ -6,11 +6,11 @@ English | [简体中文](README.zh-CN.md)
 
 Both mods work in the desktop app and the terminal.
 
-## goal-card
+## status-card
 
-A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two keeps the turn's calls, edited files and elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) by [hamzafer](https://github.com/hamzafer). [More →](mods/goal-card/README.md)
+A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two keeps the turn's calls, edited files and elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) by [hamzafer](https://github.com/hamzafer). [More →](mods/status-card/README.md)
 
-<img src="mods/goal-card/docs/card-waiting.en.svg" alt="goal-card card" width="720">
+<img src="mods/status-card/docs/card-waiting.en.svg" alt="status-card card" width="720">
 
 ## session-title
 
@@ -23,24 +23,24 @@ Keeps the session title in the form `前缀｜MMDD｜主体` (prefix｜month-day
 In Claude Code in a terminal (the desktop app's Code tab has no `/plugin install`; once installed from a terminal, desktop sessions load it too):
 
 ```
-/plugin install goal-card --marketplace tyler4400/tyler-claude-mods
+/plugin install status-card --marketplace tyler4400/tyler-claude-mods
 ```
 
 Or from a shell:
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
-claude plugin install goal-card@tyler-claude-mods --scope user
+claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-For session-title, use `session-title` in place of `goal-card`. Then start a new session, or run `/reload-plugins` in an open one.
+For session-title, use `session-title` in place of `status-card`. Then start a new session, or run `/reload-plugins` in an open one.
 
 ## Security
 
 Mods are not sandboxed; they run with the same permissions as Claude Code. Read the source before installing, or list the hooks a mod registers and the interfaces it calls with:
 
 ```bash
-claude plugin validate mods/goal-card
+claude plugin validate mods/status-card
 ```
 
 ## Development
@@ -50,8 +50,15 @@ claude plugin validate mods/<name>   # check the manifest and hooks module
 claude plugin test mods/<name>       # run *.test.ts
 ```
 
-Add this folder as a local marketplace (`claude plugin marketplace add <this folder>`) and install from it. `/reload-plugins` re-reads the folder, but after an app restart Claude Code loads the copy cached at install time. So after changing code, bump the version in `plugin.json` and run `claude plugin update <name>@tyler-claude-mods`.
+Add this folder as a local marketplace (`claude plugin marketplace add <this folder>`) and install from it. `/reload-plugins` re-reads the folder, but after an app restart Claude Code loads the copy made at install time under `~/.claude/plugins/cache/tyler-claude-mods/<name>/<version>/`. So after changing code, bump the version in `plugin.json` and run:
+
+```bash
+claude plugin marketplace update tyler-claude-mods
+claude plugin update <name>@tyler-claude-mods
+```
+
+A local marketplace records this folder's path. If you delete or move the folder, installed mods keep running from the cache but can no longer be updated or installed; run `claude plugin marketplace remove tyler-claude-mods` first, then add it from GitHub as above.
 
 ## License
 
-MIT. goal-card builds on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar).
+MIT. status-card builds on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar).

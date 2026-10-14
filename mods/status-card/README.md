@@ -1,6 +1,6 @@
 English | [简体中文](README.zh-CN.md)
 
-# goal-card
+# status-card
 
 A recap card above the Claude Code prompt: the goal, what is happening now, and what waits on you. The recap is saved per conversation, so it is still there after you restart the app or open a session from days ago. Made for long sessions: step away, come back, and pick up where you left off at a glance.
 
@@ -31,21 +31,28 @@ When the window gets narrow, the turn, time, stats and buttons on the right stay
 In Claude Code in a terminal:
 
 ```
-/plugin install goal-card --marketplace tyler4400/tyler-claude-mods
+/plugin install status-card --marketplace tyler4400/tyler-claude-mods
 ```
 
 Or from a shell:
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
-claude plugin install goal-card@tyler-claude-mods --scope user
+claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-The card appears after the first turn ends.
+The card appears after the first turn ends. If you install it in the middle of a turn, that turn's card has no call count or elapsed time on the right; they show from the next turn.
+
+**Upgrading from where-am-i or goal-card:** these are earlier names of this mod. Uninstall the old one, then install status-card. Recaps are stored per plugin name, so old recaps do not carry over.
+
+```bash
+claude plugin uninstall where-am-i@tyler-claude-mods   # or goal-card@tyler-claude-mods
+claude plugin install status-card@tyler-claude-mods --scope user
+```
 
 ## Configuration
 
-Change these in `/config` or `/plugin configure goal-card@tyler-claude-mods`. Changes apply right away.
+Change these in `/config` or `/plugin configure status-card@tyler-claude-mods`. Changes apply right away.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -97,4 +104,4 @@ Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.compl
 
 ## Credits
 
-Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar). It was called where-am-i here too and was renamed goal-card to avoid clashing with the original. This version turns it into a card and adds persistence, the running summary, language following, details, folding and options.
+Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar). It was called where-am-i here too and was renamed status-card to avoid clashing with the original. This version turns it into a card and adds persistence, the running summary, language following, details, folding and options.

@@ -4,10 +4,10 @@ import { clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isTy
 
 describe('detectLang', () => {
   test('中文为主判为 zh，夹杂英文标识符也算', async () => {
-    expect(detectLang('帮我安装 goal-card 并看看 $.store 存在哪里')).toBe('zh')
+    expect(detectLang('帮我安装 status-card 并看看 $.store 存在哪里')).toBe('zh')
   })
   test('纯英文判为 en', async () => {
-    expect(detectLang('install goal-card and check the store')).toBe('en')
+    expect(detectLang('install status-card and check the store')).toBe('en')
   })
 })
 
@@ -58,9 +58,9 @@ describe('clip', () => {
 
 describe('parseSummary', () => {
   test('容忍代码块，去掉破折号', async () => {
-    const parsed = parseSummary('```json\n{"goal":"跨重启保留摘要","now":"写完卡片 — 待测试","waiting":"","next":"跑测试","overall":"决定 fork goal-card"}\n```')
+    const parsed = parseSummary('```json\n{"goal":"跨重启保留摘要","now":"写完卡片 — 待测试","waiting":"","next":"跑测试","overall":"决定 fork status-card"}\n```')
     expect(parsed?.recap).toEqual({ goal: '跨重启保留摘要', now: '写完卡片, 待测试', waiting: '', next: '跑测试' })
-    expect(parsed?.overall).toBe('决定 fork goal-card')
+    expect(parsed?.overall).toBe('决定 fork status-card')
   })
   test('没有 goal 视为无效', async () => {
     expect(parseSummary('{"now":"x"}')).toBeNull()
