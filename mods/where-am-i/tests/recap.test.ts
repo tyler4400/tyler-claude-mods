@@ -89,11 +89,14 @@ describe('countTurns / formatTime / parseOffset', () => {
       { role: 'user', text: '继续' },
     ])).toBe(2)
   })
-  test('时间一律是 MMDD HH:mm，按本机时区', async () => {
+  test('当天只显示时间，其他日子带 MMDD，按本机时区', async () => {
     const offset = parseOffset('+0800')
     expect(offset).toBe(480)
-    expect(formatTime(Date.UTC(2026, 9, 13, 9, 5), offset)).toBe('1013 17:05') // 本地 17:05
-    expect(formatTime(Date.UTC(2026, 9, 13, 20, 0), offset)).toBe('1014 04:00') // 跨到本地第二天
+    const at = Date.UTC(2026, 9, 13, 9, 5) // 本地 1013 17:05
+    expect(formatTime(at, at + 60_000, offset)).toBe('17:05')
+    expect(formatTime(at, at + 86_400_000, offset)).toBe('1013 17:05')
+    // UTC 还是同一天，本地已经是第二天
+    expect(formatTime(at, Date.UTC(2026, 9, 13, 17, 0), offset)).toBe('1013 17:05')
   })
 })
 

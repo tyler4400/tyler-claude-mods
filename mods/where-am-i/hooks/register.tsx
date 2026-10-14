@@ -307,7 +307,7 @@ export const register: Register = (on, options) => {
     const isWaiting = !isWorking && record.recap.waiting !== ''
     const stateColor = isWorking ? settings.accentColor : isWaiting ? settings.waitingColor : settings.idleColor
     const meta = settings.showMeta
-      ? `${L.turn(record.turn)} · ${formatTime(record.updatedAt, offsetMinutes)}`
+      ? `${L.turn(record.turn)} · ${formatTime(record.updatedAt, await $.clock.now(), offsetMinutes)}`
       : ''
 
     const border = settings.borderStyle === 'none' ? {} : { borderStyle: settings.borderStyle, borderColor: stateColor }
@@ -323,15 +323,23 @@ export const register: Register = (on, options) => {
     const progressStats = stats ? formatStats(stats, record.lang) : ''
 
     if (await read($, isFolded)) {
-      // 这一版引擎的 Button 只接受纯文字：状态点和标记画在按钮两侧
+      // 胶囊按内容收窄，最宽撑满一行：目标先被截断，右侧的标记、轮次、统计和展开按钮保持完整
       return (
         <Box flexDirection="column">
-          <Box flexDirection="row" alignSelf="flex-start" gap={1} paddingX={1} {...border}>
-            <Text color={stateColor}>{'●'}</Text>
-            <Button key="unfold" plain label={`🎯 ${clip(record.recap.goal, 30)}`} onPress={() => setFolded($, false)} />
-            {isWaiting && <Text color={settings.waitingColor}>{`⏳ ${L.waiting}`}</Text>}
-            {meta !== '' && <Text dimColor>{meta}</Text>}
-            {progressStats !== '' && <Text dimColor>{`· ${progressStats}`}</Text>}
+          {/* 外层整行，胶囊作为可收缩的子项：内容短时按内容宽，超出一行时收缩 */}
+          <Box flexDirection="row">
+            <Box flexDirection="row" flexShrink={1} minWidth={0} gap={1} paddingX={1} {...border}>
+              <Text color={stateColor}>{'●'}</Text>
+              <Box flexShrink={1} minWidth={0} overflow="hidden">
+                <Text wrap="truncate-end">{`🎯 ${record.recap.goal}`}</Text>
+              </Box>
+              <Box flexDirection="row" flexShrink={0} gap={1}>
+                {isWaiting && <Text color={settings.waitingColor}>{`⏳ ${L.waiting}`}</Text>}
+                {meta !== '' && <Text dimColor>{meta}</Text>}
+                {progressStats !== '' && <Text dimColor>{`· ${progressStats}`}</Text>}
+                <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
+              </Box>
+            </Box>
           </Box>
           {rest}
         </Box>

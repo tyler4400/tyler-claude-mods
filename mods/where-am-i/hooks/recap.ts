@@ -15,6 +15,7 @@ const LABELS = {
     expand: '详情',
     collapse: '收起',
     fold: '折叠',
+    unfold: '展开',
     loading: '正在生成详情…',
     failed: '详情生成失败，稍后再试。',
     noRecap: '还没有摘要，等这一轮结束后再试。',
@@ -29,6 +30,7 @@ const LABELS = {
     expand: 'Details',
     collapse: 'Hide',
     fold: 'Fold',
+    unfold: 'Unfold',
     loading: 'Writing the details…',
     failed: 'Could not write the details. Try again later.',
     noRecap: 'No recap yet. Try again after this turn ends.',
@@ -234,11 +236,15 @@ export function countTurns(messages: readonly { role: string; text: string }[]):
   return messages.filter(m => m.role === 'user' && m.text.trim() !== '').length
 }
 
-/** 更新时间，一律 `MMDD HH:mm`（如 1013 20:06），按本机时区 */
-export function formatTime(at: number, offsetMinutes: number): string {
-  const local = new Date(at + offsetMinutes * 60_000)
+/** 更新时间：当天只显示 `HH:mm`，其他日子 `MMDD HH:mm`（如 1013 20:06），按本机时区 */
+export function formatTime(at: number, now: number, offsetMinutes: number): string {
+  const local = (ms: number) => new Date(ms + offsetMinutes * 60_000)
+  const a = local(at)
+  const b = local(now)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(local.getUTCMonth() + 1)}${pad(local.getUTCDate())} ${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}`
+  const time = `${pad(a.getUTCHours())}:${pad(a.getUTCMinutes())}`
+  const sameDay = a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate()
+  return sameDay ? time : `${pad(a.getUTCMonth() + 1)}${pad(a.getUTCDate())} ${time}`
 }
 
 /** `date +%z` 的输出（+0800）转成分钟 */

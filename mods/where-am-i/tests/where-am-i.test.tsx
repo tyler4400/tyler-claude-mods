@@ -52,7 +52,7 @@ describe('where-am-i', () => {
     const ui = await $.ui.mount({ plugin: 'where-am-i', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /等你：你确认样式/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 1013 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /band below/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
     await ui.unmount()
@@ -92,7 +92,7 @@ describe('where-am-i', () => {
     expect(store.get('pref:folded')).toBe(true)
     expect(await ui.find({ key: 'unfold' })).toBeDefined()
     // 胶囊里也有轮次、时间和这一轮的统计
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 1013 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^· 1 次调用 · 改 1 个文件 · 0秒$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     expect(store.get('pref:folded')).toBe(false)
