@@ -50,7 +50,6 @@ type Settings = {
   borderStyle: string
   density: string
   showMeta: boolean
-  showNext: boolean
   retentionDays: number
 }
 
@@ -66,7 +65,6 @@ function settingsFrom(options: PluginOptions): Settings {
     borderStyle: text('borderStyle', 'round'),
     density: text('density', 'comfortable'),
     showMeta: options.showMeta !== false,
-    showNext: options.showNext !== false,
     retentionDays: typeof options.retentionDays === 'number' && options.retentionDays > 0 ? options.retentionDays : 30,
   }
 }
@@ -314,21 +312,6 @@ export const register: Register = (on, options) => {
 
     const border = settings.borderStyle === 'none' ? {} : { borderStyle: settings.borderStyle, borderColor: stateColor }
 
-    if (await read($, isFolded)) {
-      // 这一版引擎的 Button 只接受纯文字：状态点和标记画在按钮两侧
-      return (
-        <Box flexDirection="column">
-          <Box flexDirection="row" alignSelf="flex-start" gap={1} paddingX={1} {...border}>
-            <Text color={stateColor}>{'●'}</Text>
-            <Button key="unfold" plain label={`🎯 ${clip(record.recap.goal, 30)}`} onPress={() => setFolded($, false)} />
-            {isWaiting && <Text color={settings.waitingColor}>{`⏳ ${L.waiting}`}</Text>}
-            {settings.showMeta && <Text dimColor>{L.turn(record.turn)}</Text>}
-          </Box>
-          {rest}
-        </Box>
-      )
-    }
-
     // 工作中显示这一轮的实时统计，结束后保留上一轮的最终统计
     const stats: TurnStats | undefined = turnProgress
       ? {
@@ -338,14 +321,29 @@ export const register: Register = (on, options) => {
         }
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
+
+    if (await read($, isFolded)) {
+      // 这一版引擎的 Button 只接受纯文字：状态点和标记画在按钮两侧
+      return (
+        <Box flexDirection="column">
+          <Box flexDirection="row" alignSelf="flex-start" gap={1} paddingX={1} {...border}>
+            <Text color={stateColor}>{'●'}</Text>
+            <Button key="unfold" plain label={`🎯 ${clip(record.recap.goal, 30)}`} onPress={() => setFolded($, false)} />
+            {isWaiting && <Text color={settings.waitingColor}>{`⏳ ${L.waiting}`}</Text>}
+            {meta !== '' && <Text dimColor>{meta}</Text>}
+            {progressStats !== '' && <Text dimColor>{`· ${progressStats}`}</Text>}
+          </Box>
+          {rest}
+        </Box>
+      )
+    }
+
     const expanded = await read($, isExpanded)
     const detail = expanded ? await read($, detailView) : null
-    // 第三行：有等你处理的事就显示它，否则显示下一步
+    // 第三行只在等你时有内容：工作中第二行已经说了在做什么，空闲时没有要你处理的事
     const actionLine = isWaiting
       ? <Text color={settings.waitingColor} wrap="truncate-end">{`⏳ ${L.waiting}${L.sep}${record.recap.waiting}`}</Text>
-      : settings.showNext && record.recap.next !== ''
-        ? <Text dimColor wrap="truncate-end">{`→ ${L.next}${L.sep}${record.recap.next}`}</Text>
-        : <Text>{' '}</Text>
+      : <Text>{' '}</Text>
 
     return (
       <Box flexDirection="column">

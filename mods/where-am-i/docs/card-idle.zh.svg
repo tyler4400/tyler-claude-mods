@@ -6,7 +6,7 @@
 <text x="36" y="84" fill="#4caf50" font-size="14" text-anchor="start">●</text>
 <text x="56" y="84" fill="#ececea" font-size="14" text-anchor="start">默认限额定为每分钟 120 次，文档已更新</text>
 <text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">7 次调用 · 改 2 个文件 · 1分05秒</text>
-<text x="36" y="120" fill="#8f8f8a" font-size="14" text-anchor="start">→ 下一步：提 PR 并请人 review</text>
+<text x="36" y="120" fill="#8f8f8a" font-size="14" text-anchor="start"></text>
 <text x="924" y="120" fill="#ececea" font-size="14" text-anchor="end">折叠</text>
 <text x="868" y="120" fill="#ececea" font-size="14" text-anchor="end">详情</text>
 </svg>

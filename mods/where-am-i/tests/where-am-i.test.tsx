@@ -54,7 +54,6 @@ describe('where-am-i', () => {
     expect(await ui.find({ type: 'Text', text: /等你：你确认样式/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 1013 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /band below/ })).toBeDefined()
-    // 有等你处理的事时第三行只显示它，不再单独显示下一步
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
     await ui.unmount()
 
@@ -77,8 +76,8 @@ describe('where-am-i', () => {
     const ui = await $.ui.mount({ plugin: 'where-am-i', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /旧会话的目标/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /第 7 轮/ })).toBeDefined()
-    // 没有等你处理的事时第三行显示下一步
-    expect(await ui.find({ type: 'Text', text: /→ 下一步：继续/ })).toBeDefined()
+    // 没有等你处理的事时第三行不显示下一步
+    expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
     await ui.unmount()
   })
 
@@ -92,6 +91,9 @@ describe('where-am-i', () => {
     await ui.press({ key: 'fold' })
     expect(store.get('pref:folded')).toBe(true)
     expect(await ui.find({ key: 'unfold' })).toBeDefined()
+    // 胶囊里也有轮次、时间和这一轮的统计
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 1013 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^· 1 次调用 · 改 1 个文件 · 0秒$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     expect(store.get('pref:folded')).toBe(false)
     await ui.unmount()

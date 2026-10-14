@@ -2,7 +2,7 @@ English | [简体中文](README.zh-CN.md)
 
 # where-am-i
 
-A recap card above the Claude Code prompt: the goal, what is happening now, the next step and what waits on you. The recap is saved per conversation, so it is still there after you restart the app or open a session from days ago. Made for long sessions: step away, come back, and pick up where you left off at a glance.
+A recap card above the Claude Code prompt: the goal, what is happening now, and what waits on you. The recap is saved per conversation, so it is still there after you restart the app or open a session from days ago. Made for long sessions: step away, come back, and pick up where you left off at a glance.
 
 <img src="docs/card-waiting.en.svg" alt="Card waiting on you, with the details open" width="720">
 
@@ -16,13 +16,13 @@ Always three lines:
 
 1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (`MMDD HH:mm`, e.g. `1013 20:06`).
 2. **● Now**: while Claude works, **This turn: what it is doing**, in one phrase; after the turn, what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
-3. **⏳ waiting on you** or **→ next**: what Claude needs from you, if anything; otherwise the next step. On the right: the **Details** and **Fold** buttons.
+3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
 When the window gets narrow, the turn, time, stats and buttons on the right stay whole and the text on the left is cut instead.
 
 - **The border colour** shows the state: working, waiting on you, or idle.
 - **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
-- **Fold**: shrinks the card to a one-line capsule (state dot, goal, waiting mark, turn). Click the goal in the capsule to unfold. The fold state is kept across sessions.
+- **Fold**: shrinks the card to a one-line capsule (state dot, goal, waiting mark, turn, update time, and the calls · files · elapsed stats). Click the goal in the capsule to unfold. The fold state is kept across sessions.
 
 ## Install
 
@@ -55,7 +55,6 @@ Change these in `/config` or `/plugin configure where-am-i@tyler-claude-mods`. C
 | `borderStyle` | `round` | Card border: `round`, `single`, `bold`, `double`, `none` |
 | `density` | `comfortable` | Line spacing: `comfortable` leaves a blank row between lines; `compact` does not |
 | `showMeta` | `true` | Show "turn N · time" |
-| `showNext` | `true` | Show "next" on the third line when nothing waits on you |
 | `retentionDays` | `30` | Recaps not updated for this many days are removed |
 
 ## How it works
