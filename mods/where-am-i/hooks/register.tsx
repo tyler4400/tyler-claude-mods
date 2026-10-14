@@ -341,7 +341,8 @@ export const register: Register = (on, options) => {
           {/* 外层整行，胶囊作为可收缩的子项：内容短时按内容宽，超出一行时收缩 */}
           <Box flexDirection="row">
             <Box flexDirection="row" flexShrink={1} minWidth={0} gap={1} paddingX={1} {...border}>
-              <Text color={stateColor}>{'●'}</Text>
+              {/* 和第二行一样：工作中是状态色圆点，这一轮完成后是 ✅ */}
+              {turnProgress ? <Text color={stateColor}>{'●'}</Text> : <Text>{DONE_MARK}</Text>}
               <Box flexShrink={1} minWidth={0} overflow="hidden">
                 {isWaiting
                   ? <Text color={settings.waitingColor} wrap="truncate-end">{capsuleText}</Text>

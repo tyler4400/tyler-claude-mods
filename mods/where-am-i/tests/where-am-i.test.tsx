@@ -96,6 +96,7 @@ describe('where-am-i', () => {
     expect(await ui.find({ type: 'Text', text: /^⏳ 等你：你确认样式$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^17:00 · 0秒$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^✅$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     expect(store.get('pref:folded')).toBe(false)
     await ui.unmount()
@@ -133,6 +134,7 @@ describe('where-am-i', () => {
     await ui.press({ key: 'fold' })
     expect(await ui.find({ type: 'Text', text: /^本轮：把详情上限改成 180 字$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^17:00 · 1分32秒$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^●$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     await ui.unmount()
 

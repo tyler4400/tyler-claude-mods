@@ -22,7 +22,7 @@ When the window gets narrow, the turn, time, stats and buttons on the right stay
 
 - **The border colour** shows the state: working, waiting on you, or idle.
 - **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
-- **Fold**: shrinks the card to a one-line capsule: a state dot, then what Claude is doing this turn while it works, otherwise what waits on you, otherwise the goal; on the right the update time, the elapsed time and an **Unfold** button. The capsule is as wide as its content and at most one full line; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
+- **Fold**: shrinks the card to a one-line capsule: the same mark as line two (a dot while working, ✅ after the turn), then what Claude is doing this turn while it works, otherwise what waits on you, otherwise the goal; on the right the update time, the elapsed time and an **Unfold** button. The capsule is as wide as its content and at most one full line; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
 
 ## Install
 
