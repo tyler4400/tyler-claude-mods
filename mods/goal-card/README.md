@@ -1,12 +1,14 @@
 English | [简体中文](README.zh-CN.md)
 
-# where-am-i
+# goal-card
 
 A recap card above the Claude Code prompt: the goal, what is happening now, and what waits on you. The recap is saved per conversation, so it is still there after you restart the app or open a session from days ago. Made for long sessions: step away, come back, and pick up where you left off at a glance.
 
 <img src="docs/card-waiting.en.svg" alt="Card waiting on you, with the details open" width="720">
 
 <img src="docs/card-idle.en.svg" alt="Card while idle" width="720">
+
+> Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) by [hamzafer](https://github.com/hamzafer). See [Credits](#credits).
 
 The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/render_screenshots.py).
 
@@ -29,25 +31,25 @@ When the window gets narrow, the turn, time, stats and buttons on the right stay
 In Claude Code in a terminal:
 
 ```
-/plugin install where-am-i --marketplace tyler4400/tyler-claude-mods
+/plugin install goal-card --marketplace tyler4400/tyler-claude-mods
 ```
 
 Or from a shell:
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
-claude plugin install where-am-i@tyler-claude-mods --scope user
+claude plugin install goal-card@tyler-claude-mods --scope user
 ```
 
 The card appears after the first turn ends.
 
 ## Configuration
 
-Change these in `/config` or `/plugin configure where-am-i@tyler-claude-mods`. Changes apply right away.
+Change these in `/config` or `/plugin configure goal-card@tyler-claude-mods`. Changes apply right away.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `language` | `auto` | Recap language: `auto` follows your latest messages (Chinese or English); `zh`; `en` |
+| `language` | `auto` | Recap language: `auto` follows the latest messages you typed (Chinese or English); background notifications and messages from other sessions do not count; `zh`; `en` |
 | `model` | `haiku` | Model that writes the recap and the details |
 | `accentColor` | `suggestion` | Colour while working: a theme colour name (`suggestion`, `claude`, `success`, `warning`, `error`, …) or `#hex` |
 | `waitingColor` | `warning` | Colour while waiting on you |
@@ -95,4 +97,4 @@ Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.compl
 
 ## Credits
 
-Forked from where-am-i in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar). This version turns it into a card and adds persistence, the running summary, language following, details, folding and options.
+Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar). It was called where-am-i here too and was renamed goal-card to avoid clashing with the original. This version turns it into a card and adds persistence, the running summary, language following, details, folding and options.

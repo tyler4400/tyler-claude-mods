@@ -1,13 +1,31 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { clip, countTurns, detectLang, formatElapsed, formatTime, headTail, parseIntent, parseOffset, parseSummary, summaryRequest, userTrail } from '../hooks/recap'
+import { clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isTypedPrompt, parseIntent, parseOffset, parseSummary, summaryRequest, userTrail } from '../hooks/recap'
 
 describe('detectLang', () => {
   test('中文为主判为 zh，夹杂英文标识符也算', async () => {
-    expect(detectLang('帮我安装 where-am-i 并看看 $.store 存在哪里')).toBe('zh')
+    expect(detectLang('帮我安装 goal-card 并看看 $.store 存在哪里')).toBe('zh')
   })
   test('纯英文判为 en', async () => {
-    expect(detectLang('install where-am-i and check the store')).toBe('en')
+    expect(detectLang('install goal-card and check the store')).toBe('en')
+  })
+})
+
+describe('isTypedPrompt', () => {
+  test('输入框、desktop 和以你名义代发的消息算你打的字', async () => {
+    expect(isTypedPrompt({ kind: 'composer' }, '帮我改个名')).toBe(true)
+    expect(isTypedPrompt({ kind: 'sdk' }, '帮我改个名')).toBe(true)
+    expect(isTypedPrompt({ kind: 'plugin', name: 'x', asUser: true }, '帮我改个名')).toBe(true)
+  })
+  test('后台通知、其他会话、定时任务和 plugin 自己发的不算', async () => {
+    expect(isTypedPrompt({ kind: 'task-notification' }, 'Background task finished')).toBe(false)
+    expect(isTypedPrompt({ kind: 'peer' }, 'Another Claude session sent a message')).toBe(false)
+    expect(isTypedPrompt({ kind: 'scheduled-trigger' }, 'Run the daily check')).toBe(false)
+    expect(isTypedPrompt({ kind: 'plugin', name: 'x' }, 'The x plugin says hi')).toBe(false)
+  })
+  test('引擎包装过的文本即使来自 desktop 也不算', async () => {
+    expect(isTypedPrompt({ kind: 'sdk' }, '<task-notification>\nAgent finished</task-notification>')).toBe(false)
+    expect(isTypedPrompt({ kind: 'composer' }, '<command-name>/clear</command-name>')).toBe(false)
   })
 })
 
@@ -40,9 +58,9 @@ describe('clip', () => {
 
 describe('parseSummary', () => {
   test('容忍代码块，去掉破折号', async () => {
-    const parsed = parseSummary('```json\n{"goal":"跨重启保留摘要","now":"写完卡片 — 待测试","waiting":"","next":"跑测试","overall":"决定 fork where-am-i"}\n```')
+    const parsed = parseSummary('```json\n{"goal":"跨重启保留摘要","now":"写完卡片 — 待测试","waiting":"","next":"跑测试","overall":"决定 fork goal-card"}\n```')
     expect(parsed?.recap).toEqual({ goal: '跨重启保留摘要', now: '写完卡片, 待测试', waiting: '', next: '跑测试' })
-    expect(parsed?.overall).toBe('决定 fork where-am-i')
+    expect(parsed?.overall).toBe('决定 fork goal-card')
   })
   test('没有 goal 视为无效', async () => {
     expect(parseSummary('{"now":"x"}')).toBeNull()

@@ -1,4 +1,6 @@
 // 不依赖引擎的纯逻辑：语言判断、截断、提示词、解析和时间格式，单独测试
+import type { PromptOrigin } from 'claude-code'
+
 import type { Lang, Recap, SessionRecord, TurnStats } from '../types'
 
 const FIELD_MAX = 70
@@ -53,6 +55,23 @@ export function detectLang(text: string): Lang {
 export function resolveLang(option: unknown, sample: string): Lang {
   if (option === 'zh' || option === 'en') return option
   return detectLang(sample)
+}
+
+// 你亲手发出的：输入框、Remote Control、desktop 等 SDK 宿主、Slack 上点名本会话
+const TYPED_ORIGINS = new Set<PromptOrigin['kind']>(['composer', 'bridge', 'sdk', 'slack-ping'])
+// 引擎包装过的文本，不是谁打的字
+const ENGINE_WRAPPER = /^<(task-notification|local-command-caveat|local-command-stdout|command-name|command-message|command-args|system-reminder)\b/
+
+/**
+ * 只有你亲手发的消息能用来判断语言：后台任务通知、其他会话的消息、定时任务也走 prompt.submit，
+ * 而且多是英文模板，拿来判断会把中文会话的卡片带成英文。判断方式借鉴 hamzafer 的 session-saver
+ */
+export function isTypedPrompt(origin: PromptOrigin | undefined, text: string): boolean {
+  const head = text.trimStart()
+  if (ENGINE_WRAPPER.test(head) || head.startsWith('Another Claude session sent a message')) return false
+  // 类型上必有，但测试引擎等场景不带：只能按文本判断
+  if (!origin) return true
+  return TYPED_ORIGINS.has(origin.kind) || (origin.kind === 'plugin' && origin.asUser === true)
 }
 
 /** 保留开头和结尾（结论通常在末尾），中间注明省略了多少字，避免模型以为信息不全 */

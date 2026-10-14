@@ -6,11 +6,11 @@ English | [简体中文](README.zh-CN.md)
 
 Both mods work in the desktop app and the terminal.
 
-## where-am-i
+## goal-card
 
-A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two keeps the turn's calls, edited files and elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. [More →](mods/where-am-i/README.md)
+A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two keeps the turn's calls, edited files and elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) by [hamzafer](https://github.com/hamzafer). [More →](mods/goal-card/README.md)
 
-<img src="mods/where-am-i/docs/card-waiting.en.svg" alt="where-am-i card" width="720">
+<img src="mods/goal-card/docs/card-waiting.en.svg" alt="goal-card card" width="720">
 
 ## session-title
 
@@ -23,24 +23,24 @@ Keeps the session title in the form `前缀｜MMDD｜主体` (prefix｜month-day
 In Claude Code in a terminal (the desktop app's Code tab has no `/plugin install`; once installed from a terminal, desktop sessions load it too):
 
 ```
-/plugin install where-am-i --marketplace tyler4400/tyler-claude-mods
+/plugin install goal-card --marketplace tyler4400/tyler-claude-mods
 ```
 
 Or from a shell:
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
-claude plugin install where-am-i@tyler-claude-mods --scope user
+claude plugin install goal-card@tyler-claude-mods --scope user
 ```
 
-For session-title, use `session-title` in place of `where-am-i`. Then start a new session, or run `/reload-plugins` in an open one.
+For session-title, use `session-title` in place of `goal-card`. Then start a new session, or run `/reload-plugins` in an open one.
 
 ## Security
 
 Mods are not sandboxed; they run with the same permissions as Claude Code. Read the source before installing, or list the hooks a mod registers and the interfaces it calls with:
 
 ```bash
-claude plugin validate mods/where-am-i
+claude plugin validate mods/goal-card
 ```
 
 ## Development
@@ -54,4 +54,4 @@ Add this folder as a local marketplace (`claude plugin marketplace add <this fol
 
 ## License
 
-MIT. where-am-i is forked from the mod of the same name in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar).
+MIT. goal-card builds on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) in [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) (MIT, Copyright (c) 2026 Hamza Zafar).

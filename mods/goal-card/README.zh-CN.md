@@ -1,12 +1,14 @@
 [English](README.md) | 简体中文
 
-# where-am-i
+# goal-card
 
 输入框上方的会话摘要卡片：目标、现在在做什么、等你处理的事。摘要按对话保存，重启 app 或几天后回看旧会话，卡片还在。适合长会话：离开一会儿再回来，一眼就能接上。
 
 <img src="docs/card-waiting.zh.svg" alt="等你处理、展开了详情的卡片" width="720">
 
 <img src="docs/card-idle.zh.svg" alt="空闲状态的卡片" width="720">
+
+> 借鉴了 [hamzafer](https://github.com/hamzafer) 的 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 源码，详见 [致谢](#致谢)。
 
 截图用示例数据画出，由 [docs/render_screenshots.py](docs/render_screenshots.py) 生成。
 
@@ -29,25 +31,25 @@
 在终端的 Claude Code 里：
 
 ```
-/plugin install where-am-i --marketplace tyler4400/tyler-claude-mods
+/plugin install goal-card --marketplace tyler4400/tyler-claude-mods
 ```
 
 或者在 shell 里：
 
 ```bash
 claude plugin marketplace add tyler4400/tyler-claude-mods
-claude plugin install where-am-i@tyler-claude-mods --scope user
+claude plugin install goal-card@tyler-claude-mods --scope user
 ```
 
 第一轮结束后卡片出现。
 
 ## 配置
 
-在 `/config` 或 `/plugin configure where-am-i@tyler-claude-mods` 里修改，改完自动生效。
+在 `/config` 或 `/plugin configure goal-card@tyler-claude-mods` 里修改，改完自动生效。
 
 | 选项 | 默认 | 说明 |
 | --- | --- | --- |
-| `language` | `auto` | 摘要语言：`auto` 按你最近的消息判断中文或英文；`zh`；`en` |
+| `language` | `auto` | 摘要语言：`auto` 按你最近亲手发的消息判断中文或英文（后台通知、其他会话的消息不算）；`zh`；`en` |
 | `model` | `haiku` | 生成摘要和详情用的模型 |
 | `accentColor` | `suggestion` | 工作中的颜色：主题色名（`suggestion`、`claude`、`success`、`warning`、`error` 等）或 `#hex` |
 | `waitingColor` | `warning` | 等你处理时的颜色 |
@@ -95,4 +97,4 @@ Hooks：`session.start`、`session.end`、`prompt.submit`、`tool.call`、`turn.
 
 ## 致谢
 
-fork 自 [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) 的 where-am-i（MIT，Copyright (c) 2026 Hamza Zafar）。在原版基础上改为卡片样式，加上持久化、滚动总结、语言跟随、详情、折叠和可配置项。
+借鉴了 [hamzafer/claude-code-mods](https://github.com/hamzafer/claude-code-mods) 中 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 的源码（MIT，Copyright (c) 2026 Hamza Zafar），原名 where-am-i，为避免和原版重名改为 goal-card。在原版基础上改为卡片样式，加上持久化、滚动总结、语言跟随、详情、折叠和可配置项。

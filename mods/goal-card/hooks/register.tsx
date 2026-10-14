@@ -1,5 +1,5 @@
-// where-am-i：输入框上方的会话摘要卡片，摘要存进 $.store，重启或回看旧会话时恢复。
-// fork 自 hamzafer/claude-code-mods 的 where-am-i（MIT），改为卡片样式并加上持久化、滚动总结和语言跟随。
+// goal-card：输入框上方的会话摘要卡片，摘要存进 $.store，重启或回看旧会话时恢复。
+// 借鉴 hamzafer/claude-code-mods 中 where-am-i 的源码（MIT），改为卡片样式并加上持久化、滚动总结和语言跟随。
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
@@ -13,6 +13,7 @@ import {
   formatStats,
   formatTime,
   intentRequest,
+  isTypedPrompt,
   labels,
   parseIntent,
   parseOffset,
@@ -34,13 +35,13 @@ const MAX_LOG = 20
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit'])
 
 // 由宿主保管，热重载后仍在；跨进程的部分另存 $.store
-const recordAtom = atom({ plugin: 'where-am-i', key: 'record' } as const, null as SessionRecord | null)
-const progress = atom({ plugin: 'where-am-i', key: 'progress' } as const, null as TurnProgress | null)
+const recordAtom = atom({ plugin: 'goal-card', key: 'record' } as const, null as SessionRecord | null)
+const progress = atom({ plugin: 'goal-card', key: 'progress' } as const, null as TurnProgress | null)
 // 工作期间每秒写一次，让已用时跟着走
-const clockNow = atom({ plugin: 'where-am-i', key: 'clockNow' } as const, 0)
-const isExpanded = atom({ plugin: 'where-am-i', key: 'isExpanded' } as const, false)
-const isFolded = atom({ plugin: 'where-am-i', key: 'isFolded' } as const, false)
-const detailView = atom({ plugin: 'where-am-i', key: 'detail' } as const, null as DetailView | null)
+const clockNow = atom({ plugin: 'goal-card', key: 'clockNow' } as const, 0)
+const isExpanded = atom({ plugin: 'goal-card', key: 'isExpanded' } as const, false)
+const isFolded = atom({ plugin: 'goal-card', key: 'isFolded' } as const, false)
+const detailView = atom({ plugin: 'goal-card', key: 'detail' } as const, null as DetailView | null)
 
 type Settings = {
   language: unknown
@@ -252,8 +253,9 @@ export const register: Register = (on, options) => {
     if (!(await read($, recordAtom))) await restoreRecord($)
     prompt = e.text
     log = []
-    // 太短的消息（如"好""开始"）不足以判断语言，沿用上一次的
-    if (Array.from(e.text.trim()).length >= 8 || settings.language === 'zh' || settings.language === 'en') {
+    // 不是你打的字、或太短（如"好""开始"）不足以判断语言时，沿用上一次的
+    const isLangSample = isTypedPrompt(e.origin, e.text) && Array.from(e.text.trim()).length >= 8
+    if (isLangSample || settings.language === 'zh' || settings.language === 'en') {
       lang = resolveLang(settings.language, e.text)
     }
     const startedAt = await $.clock.now()

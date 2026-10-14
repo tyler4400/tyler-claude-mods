@@ -7,8 +7,8 @@
   },
   "plugins": [
     {
-      "name": "where-am-i",
-      "source": "./mods/where-am-i",
+      "name": "goal-card",
+      "source": "./mods/goal-card",
       "description": "输入框上方的会话摘要卡片，跨重启保留，可展开详情、折叠成胶囊"
     },
     {
