@@ -23,7 +23,7 @@ SAMPLES = {
     "en": {
         "waiting": {
             "goal": "🎯 Add rate limiting to the public API",
-            "meta": "turn 14 · 16:20",
+            "meta": "turn 14 · 1013 16:20",
             "now": "Wired the limiter into the gateway and added tests",
             "stats": "18 calls · 3 files edited · 2m41s",
             "action": "⏳ waiting on you: Pick a default limit, 60 or 120 requests per minute",
@@ -34,7 +34,7 @@ SAMPLES = {
         },
         "idle": {
             "goal": "🎯 Add rate limiting to the public API",
-            "meta": "turn 15 · 16:32",
+            "meta": "turn 15 · 1013 16:32",
             "now": "Set the default to 120 requests per minute and updated the docs",
             "stats": "7 calls · 2 files edited · 1m05s",
             "action": "→ next: Open a PR and ask for review",
@@ -44,7 +44,7 @@ SAMPLES = {
     "zh": {
         "waiting": {
             "goal": "🎯 给公开 API 加限流",
-            "meta": "第 14 轮 · 16:20",
+            "meta": "第 14 轮 · 1013 16:20",
             "now": "已把限流器接进网关并补上测试",
             "stats": "18 次调用 · 改 3 个文件 · 2分41秒",
             "action": "⏳ 等你：默认限额定为每分钟 60 次还是 120 次",
@@ -54,7 +54,7 @@ SAMPLES = {
         },
         "idle": {
             "goal": "🎯 给公开 API 加限流",
-            "meta": "第 15 轮 · 16:32",
+            "meta": "第 15 轮 · 1013 16:32",
             "now": "默认限额定为每分钟 120 次，文档已更新",
             "stats": "7 次调用 · 改 2 个文件 · 1分05秒",
             "action": "→ 下一步：提 PR 并请人 review",

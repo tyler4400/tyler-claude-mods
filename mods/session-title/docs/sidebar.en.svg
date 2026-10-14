@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="324" viewBox="0 0 400 324" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', 'Noto Sans SC', sans-serif">
+<rect width="400" height="324" rx="14" fill="#30302e"/>
+<text x="28" y="40" fill="#8f8f8a" font-size="13" text-anchor="start" font-weight="600">Sessions</text>
+<rect x="16" y="56" width="368" height="32" rx="8" fill="#3a3a37"/>
+<text x="28" y="77" fill="#ececea" font-size="14" text-anchor="start">实现｜1014｜Public API rate limiting</text>
+<text x="28" y="113" fill="#d6d6d2" font-size="14" text-anchor="start">问题｜1014｜Flaky CI test timeouts</text>
+<text x="28" y="149" fill="#d6d6d2" font-size="14" text-anchor="start">方案｜1013｜Order export endpoint</text>
+<text x="28" y="185" fill="#d6d6d2" font-size="14" text-anchor="start">探索｜1013｜Rust ownership basics</text>
+<text x="28" y="221" fill="#d6d6d2" font-size="14" text-anchor="start">环境｜1012｜Local proxy and certificates</text>
+<text x="28" y="257" fill="#d6d6d2" font-size="14" text-anchor="start">生活｜1011｜Weekend camping checklist</text>
+<line x1="28" y1="282" x2="372" y2="282" stroke="#4a4a46"/>
+<text x="28" y="306" fill="#8f8f8a" font-size="12" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">prefix｜MMDD｜subject</text>
+</svg>

@@ -89,12 +89,11 @@ describe('countTurns / formatTime / parseOffset', () => {
       { role: 'user', text: '继续' },
     ])).toBe(2)
   })
-  test('同一天只显示时间，跨天带日期', async () => {
+  test('时间一律是 MMDD HH:mm，按本机时区', async () => {
     const offset = parseOffset('+0800')
     expect(offset).toBe(480)
-    const at = Date.UTC(2026, 9, 13, 9, 5) // 本地 17:05
-    expect(formatTime(at, at + 60_000, offset)).toBe('17:05')
-    expect(formatTime(at, at + 2 * 86_400_000, offset)).toBe('10/13 17:05')
+    expect(formatTime(Date.UTC(2026, 9, 13, 9, 5), offset)).toBe('1013 17:05') // 本地 17:05
+    expect(formatTime(Date.UTC(2026, 9, 13, 20, 0), offset)).toBe('1014 04:00') // 跨到本地第二天
   })
 })
 

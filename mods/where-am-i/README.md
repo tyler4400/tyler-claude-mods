@@ -14,7 +14,7 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 
 Always three lines:
 
-1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (time only for today, date and time otherwise).
+1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (`MMDD HH:mm`, e.g. `1013 20:06`).
 2. **● Now**: while Claude works, **This turn: what it is doing**, in one phrase; after the turn, what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you** or **→ next**: what Claude needs from you, if anything; otherwise the next step. On the right: the **Details** and **Fold** buttons.
 
@@ -23,7 +23,6 @@ When the window gets narrow, the turn, time, stats and buttons on the right stay
 - **The border colour** shows the state: working, waiting on you, or idle.
 - **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
 - **Fold**: shrinks the card to a one-line capsule (state dot, goal, waiting mark, turn). Click the goal in the capsule to unfold. The fold state is kept across sessions.
-- `/where`: unfolds the card and opens the details. The command itself leaves one line of text in the conversation.
 
 ## Install
 
@@ -83,7 +82,7 @@ When you resume a conversation after restarting the app, or fork one, Claude Cod
 
 **What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone. It makes no other network requests and reads or writes no files outside its store.
 
-Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.complete`, `command.run` (`/where`), `ui.render` (`AbovePrompt`).
+Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.complete`, `ui.render` (`AbovePrompt`).
 
 ## Limitations
 

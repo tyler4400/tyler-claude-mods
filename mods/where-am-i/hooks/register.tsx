@@ -220,7 +220,6 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     const result = await next(e)
-    await $.command.register({ name: 'where', description: '展开 where-am-i 卡片里的详情' }).catch(() => {}) // 重名会被拒绝：照常启动
     try {
       offsetMinutes = parseOffset((await $.process.run(['date', '+%z'])).stdout)
     } catch {
@@ -298,14 +297,6 @@ export const register: Register = (on, options) => {
     return result
   })
 
-  on('command.run', { command: 'where' }, async $ => {
-    const record = await read($, recordAtom)
-    if (!record) return { text: labels(lang).noRecap }
-    await setFolded($, false)
-    void setExpanded($, true)
-    return { text: labels(record.lang).expandedByCommand }
-  })
-
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const rest = await next(e) // 其他 mod 和 Claude Code 自己画在这里的内容保留在卡片下方
     const record = await read($, recordAtom)
@@ -318,7 +309,7 @@ export const register: Register = (on, options) => {
     const isWaiting = !isWorking && record.recap.waiting !== ''
     const stateColor = isWorking ? settings.accentColor : isWaiting ? settings.waitingColor : settings.idleColor
     const meta = settings.showMeta
-      ? `${L.turn(record.turn)} · ${formatTime(record.updatedAt, await $.clock.now(), offsetMinutes)}`
+      ? `${L.turn(record.turn)} · ${formatTime(record.updatedAt, offsetMinutes)}`
       : ''
 
     const border = settings.borderStyle === 'none' ? {} : { borderStyle: settings.borderStyle, borderColor: stateColor }

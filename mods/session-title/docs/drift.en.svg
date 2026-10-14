@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="408" viewBox="0 0 720 408" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', 'Noto Sans SC', sans-serif">
+<rect width="720" height="408" rx="14" fill="#30302e"/>
+<text x="36" y="40" fill="#8f8f8a" font-size="13" text-anchor="start" font-weight="600">How the title follows the session</text>
+<circle cx="42" cy="74" r="6" fill="#d97757"/>
+<line x1="42" y1="86" x2="42" y2="174" stroke="#4a4a46" stroke-width="2"/>
+<text x="64" y="79" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">turn 2</text>
+<text x="144" y="79" fill="#8f8f8a" font-size="14" text-anchor="start">Opens by comparing rate-limiting approaches</text>
+<rect x="64" y="92" width="628" height="58" rx="8" fill="#262624" stroke="#4a4a46"/>
+<text x="78" y="115" fill="#8f8f8a" font-size="13" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">主线：Compare rate-limiting options for the public API</text>
+<text x="78" y="138" fill="#d97757" font-size="13" text-anchor="start" font-weight="600" font-family="'SF Mono', Menlo, Consolas, monospace">选型｜1013｜API rate limiting options</text>
+<circle cx="42" cy="186" r="6" fill="#d97757"/>
+<line x1="42" y1="198" x2="42" y2="286" stroke="#4a4a46" stroke-width="2"/>
+<text x="64" y="191" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">turn 9</text>
+<text x="144" y="191" fill="#8f8f8a" font-size="14" text-anchor="start">Several turns of building the limiter and its tests</text>
+<rect x="64" y="204" width="628" height="58" rx="8" fill="#262624" stroke="#4a4a46"/>
+<text x="78" y="227" fill="#8f8f8a" font-size="13" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">主线：Implement token-bucket rate limiting for the public API</text>
+<text x="78" y="250" fill="#d97757" font-size="13" text-anchor="start" font-weight="600" font-family="'SF Mono', Menlo, Consolas, monospace">实现｜1013｜Public API rate limiting</text>
+<circle cx="42" cy="298" r="6" fill="#4caf50"/>
+<text x="64" y="303" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">turn 10</text>
+<text x="144" y="303" fill="#8f8f8a" font-size="14" text-anchor="start">A quick question about a failing CI run</text>
+<rect x="64" y="316" width="628" height="58" rx="8" fill="#262624" stroke="#4a4a46"/>
+<text x="78" y="339" fill="#8f8f8a" font-size="13" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">主线：Implement token-bucket rate limiting for the public API</text>
+<text x="78" y="362" fill="#4caf50" font-size="13" text-anchor="start" font-weight="600" font-family="'SF Mono', Menlo, Consolas, monospace">KEEP (title unchanged)</text>
+</svg>

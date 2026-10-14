@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="324" viewBox="0 0 400 324" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', 'Noto Sans SC', sans-serif">
+<rect width="400" height="324" rx="14" fill="#30302e"/>
+<text x="28" y="40" fill="#8f8f8a" font-size="13" text-anchor="start" font-weight="600">会话</text>
+<rect x="16" y="56" width="368" height="32" rx="8" fill="#3a3a37"/>
+<text x="28" y="77" fill="#ececea" font-size="14" text-anchor="start">实现｜1014｜公开API限流</text>
+<text x="28" y="113" fill="#d6d6d2" font-size="14" text-anchor="start">问题｜1014｜CI单测偶发超时</text>
+<text x="28" y="149" fill="#d6d6d2" font-size="14" text-anchor="start">方案｜1013｜订单导出接口设计</text>
+<text x="28" y="185" fill="#d6d6d2" font-size="14" text-anchor="start">探索｜1013｜Rust所有权入门</text>
+<text x="28" y="221" fill="#d6d6d2" font-size="14" text-anchor="start">环境｜1012｜本地代理与证书配置</text>
+<text x="28" y="257" fill="#d6d6d2" font-size="14" text-anchor="start">生活｜1011｜周末露营装备清单</text>
+<line x1="28" y1="282" x2="372" y2="282" stroke="#4a4a46"/>
+<text x="28" y="306" fill="#8f8f8a" font-size="12" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">前缀｜MMDD｜主体</text>
+</svg>

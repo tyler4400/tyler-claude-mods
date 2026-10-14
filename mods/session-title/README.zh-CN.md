@@ -4,6 +4,12 @@
 
 每轮结束后用 Haiku 按 [title-rules.md](title-rules.md) 的规则检查会话标题，格式为 `前缀｜MMDD｜主体`，例如 `探索｜1013｜ClaudeCode mods调研`。
 
+<img src="docs/sidebar.zh.svg" alt="侧边栏里的会话标题" width="400">
+
+<img src="docs/drift.zh.svg" alt="标题怎么跟着主线走" width="720">
+
+截图用示例数据画出，由 [docs/render_screenshots.py](docs/render_screenshots.py) 生成。
+
 - 每轮都检查：模型先用一句话写出会话**现在持续在做的事**，再决定保持还是改。开场话题被后来持续多轮的工作取代（比如从调研 mods 变成改写并发布某个 mod），就改主体；一两轮的临时插问、报错不算偏离。
 - 稳定优先：格式对、日期是今天、标题仍说得出现在在做的事时保持不变。
 - 你拒绝过一次改主体后，主体会被锁定，之后只调整前缀和日期；连这个也被拒绝，本会话就不再尝试。

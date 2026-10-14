@@ -10,7 +10,6 @@ function engine(on: any, store: Map<string, unknown>, sessionId = 's1') {
   on('session.start', (_$: any, e: any) => ({ sessionId: 's1', cwd: e.cwd }))
   on('session.id', () => ({ value: sessionId }))
   on('session.cwd', () => ({ value: '/work' }))
-  on('command.register', () => ({ value: undefined }))
   on('process.run', () => ({ value: { stdout: '+0800\n', stderr: '', code: 0 } }))
   on('store.get', (_$: any, e: any) => ({ value: store.get(e.key) }))
   on('store.set', (_$: any, e: any) => {
@@ -53,7 +52,7 @@ describe('where-am-i', () => {
     const ui = await $.ui.mount({ plugin: 'where-am-i', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /等你：你确认样式/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /第 1 轮/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 1013 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /band below/ })).toBeDefined()
     // 有等你处理的事时第三行只显示它，不再单独显示下一步
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()

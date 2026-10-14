@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="408" viewBox="0 0 720 408" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Segoe UI', 'Noto Sans SC', sans-serif">
+<rect width="720" height="408" rx="14" fill="#30302e"/>
+<text x="36" y="40" fill="#8f8f8a" font-size="13" text-anchor="start" font-weight="600">标题怎么跟着主线走</text>
+<circle cx="42" cy="74" r="6" fill="#d97757"/>
+<line x1="42" y1="86" x2="42" y2="174" stroke="#4a4a46" stroke-width="2"/>
+<text x="64" y="79" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">第 2 轮</text>
+<text x="144" y="79" fill="#8f8f8a" font-size="14" text-anchor="start">开场在比较几种限流方案</text>
+<rect x="64" y="92" width="628" height="58" rx="8" fill="#262624" stroke="#4a4a46"/>
+<text x="78" y="115" fill="#8f8f8a" font-size="13" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">主线：比较公开 API 的几种限流方案</text>
+<text x="78" y="138" fill="#d97757" font-size="13" text-anchor="start" font-weight="600" font-family="'SF Mono', Menlo, Consolas, monospace">选型｜1013｜API限流方案对比</text>
+<circle cx="42" cy="186" r="6" fill="#d97757"/>
+<line x1="42" y1="198" x2="42" y2="286" stroke="#4a4a46" stroke-width="2"/>
+<text x="64" y="191" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">第 9 轮</text>
+<text x="144" y="191" fill="#8f8f8a" font-size="14" text-anchor="start">之后连续多轮在实现限流器、补测试</text>
+<rect x="64" y="204" width="628" height="58" rx="8" fill="#262624" stroke="#4a4a46"/>
+<text x="78" y="227" fill="#8f8f8a" font-size="13" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">主线：给公开 API 实现令牌桶限流并补测试</text>
+<text x="78" y="250" fill="#d97757" font-size="13" text-anchor="start" font-weight="600" font-family="'SF Mono', Menlo, Consolas, monospace">实现｜1013｜公开API限流</text>
+<circle cx="42" cy="298" r="6" fill="#4caf50"/>
+<text x="64" y="303" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">第 10 轮</text>
+<text x="144" y="303" fill="#8f8f8a" font-size="14" text-anchor="start">临时问了一句 CI 为什么挂了</text>
+<rect x="64" y="316" width="628" height="58" rx="8" fill="#262624" stroke="#4a4a46"/>
+<text x="78" y="339" fill="#8f8f8a" font-size="13" text-anchor="start" font-family="'SF Mono', Menlo, Consolas, monospace">主线：给公开 API 实现令牌桶限流并补测试</text>
+<text x="78" y="362" fill="#4caf50" font-size="13" text-anchor="start" font-weight="600" font-family="'SF Mono', Menlo, Consolas, monospace">KEEP（标题不变）</text>
+</svg>
