@@ -15,14 +15,14 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 Always three lines:
 
 1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (`HH:mm` for today, `MMDD HH:mm` for other days, e.g. `1013 20:06`).
-2. **● Now**: while Claude works, **This turn: what it is doing**, in one phrase; after the turn, what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
+2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase; after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
 When the window gets narrow, the turn, time, stats and buttons on the right stay whole and the text on the left is cut instead.
 
 - **The border colour** shows the state: working, waiting on you, or idle.
 - **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
-- **Fold**: shrinks the card to a one-line capsule: state dot, goal, waiting mark, turn, update time, the calls · files · elapsed stats, and an **Unfold** button. The capsule is as wide as its content and at most one full line; when it does not fit, the goal is cut first. The fold state is kept across sessions.
+- **Fold**: shrinks the card to a one-line capsule: a state dot, then what Claude is doing this turn while it works, otherwise what waits on you, otherwise the goal; on the right the update time, the elapsed time and an **Unfold** button. The capsule is as wide as its content and at most one full line; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
 
 ## Install
 

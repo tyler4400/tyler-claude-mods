@@ -3,8 +3,7 @@
 <rect x="16" y="16" width="928" height="128" rx="10" fill="#262624" stroke="#4caf50" stroke-width="1.5"/>
 <text x="36" y="48" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">🎯 给公开 API 加限流</text>
 <text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">第 15 轮 · 16:32</text>
-<text x="36" y="84" fill="#4caf50" font-size="14" text-anchor="start">●</text>
-<text x="56" y="84" fill="#ececea" font-size="14" text-anchor="start">默认限额定为每分钟 120 次，文档已更新</text>
+<text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ 默认限额定为每分钟 120 次，文档已更新</text>
 <text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">7 次调用 · 改 2 个文件 · 1分05秒</text>
 <text x="36" y="120" fill="#8f8f8a" font-size="14" text-anchor="start"></text>
 <text x="924" y="120" fill="#ececea" font-size="14" text-anchor="end">折叠</text>

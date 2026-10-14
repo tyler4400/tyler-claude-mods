@@ -52,6 +52,7 @@ describe('where-am-i', () => {
     const ui = await $.ui.mount({ plugin: 'where-am-i', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /等你：你确认样式/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^✅ 写完卡片$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /band below/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
@@ -91,9 +92,10 @@ describe('where-am-i', () => {
     await ui.press({ key: 'fold' })
     expect(store.get('pref:folded')).toBe(true)
     expect(await ui.find({ key: 'unfold' })).toBeDefined()
-    // 胶囊里也有轮次、时间和这一轮的统计
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^· 1 次调用 · 改 1 个文件 · 0秒$/ })).toBeDefined()
+    // 胶囊优先显示等你处理的事，右侧只有更新时间和用时
+    expect(await ui.find({ type: 'Text', text: /^⏳ 等你：你确认样式$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^17:00 · 0秒$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     expect(store.get('pref:folded')).toBe(false)
     await ui.unmount()
@@ -125,8 +127,13 @@ describe('where-am-i', () => {
     await clock.advance(92_000)
 
     const ui = await $.ui.mount({ plugin: 'where-am-i', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
-    expect(await ui.find({ type: 'Text', text: /本轮：把详情上限改成 180 字/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
+    // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
+    await ui.press({ key: 'fold' })
+    expect(await ui.find({ type: 'Text', text: /^本轮：把详情上限改成 180 字$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:00 · 1分32秒$/ })).toBeDefined()
+    await ui.press({ key: 'unfold' })
     await ui.unmount()
 
     await $.turn.complete({ reason: 'answer', answer: '改好了', durationMs: 1 } as any)

@@ -9,6 +9,7 @@ import {
   countTurns,
   describeTool,
   detailRequest,
+  formatElapsed,
   formatStats,
   formatTime,
   intentRequest,
@@ -120,6 +121,9 @@ async function setFolded($: Engine, value: boolean): Promise<void> {
   await update($, isFolded, () => value)
   await $.store.set(FOLDED_KEY, value)
 }
+
+// 第二行行首：这一轮已完成时用 ✅，和第一行的 🎯、第三行的 ⏳ 一样；工作中仍是状态色的圆点
+const DONE_MARK = '✅'
 
 // 模块级状态：热重载后重置，需要跨重载的都在 atom 和 $.store 里
 let settings = settingsFrom({})
@@ -306,9 +310,8 @@ export const register: Register = (on, options) => {
     const turnProgress = isWorking ? await read($, progress) : null
     const isWaiting = !isWorking && record.recap.waiting !== ''
     const stateColor = isWorking ? settings.accentColor : isWaiting ? settings.waitingColor : settings.idleColor
-    const meta = settings.showMeta
-      ? `${L.turn(record.turn)} · ${formatTime(record.updatedAt, await $.clock.now(), offsetMinutes)}`
-      : ''
+    const updatedAt = formatTime(record.updatedAt, await $.clock.now(), offsetMinutes)
+    const meta = settings.showMeta ? `${L.turn(record.turn)} · ${updatedAt}` : ''
 
     const border = settings.borderStyle === 'none' ? {} : { borderStyle: settings.borderStyle, borderColor: stateColor }
 
@@ -321,9 +324,18 @@ export const register: Register = (on, options) => {
         }
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
+    const workingText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt, 40)}` : ''
 
     if (await read($, isFolded)) {
-      // 胶囊按内容收窄，最宽撑满一行：目标先被截断，右侧的标记、轮次、统计和展开按钮保持完整
+      // 胶囊依次优先显示：工作中这一轮在做什么、等你处理的事、目标；放不下时截断这段文字，右侧的时间、用时和展开按钮保持完整
+      const capsuleText = turnProgress
+        ? workingText
+        : isWaiting
+          ? `⏳ ${L.waiting}${L.sep}${record.recap.waiting}`
+          : `🎯 ${record.recap.goal}`
+      const capsuleMeta = [settings.showMeta ? updatedAt : '', stats ? formatElapsed(stats.elapsedMs, record.lang) : '']
+        .filter(part => part !== '')
+        .join(' · ')
       return (
         <Box flexDirection="column">
           {/* 外层整行，胶囊作为可收缩的子项：内容短时按内容宽，超出一行时收缩 */}
@@ -331,12 +343,12 @@ export const register: Register = (on, options) => {
             <Box flexDirection="row" flexShrink={1} minWidth={0} gap={1} paddingX={1} {...border}>
               <Text color={stateColor}>{'●'}</Text>
               <Box flexShrink={1} minWidth={0} overflow="hidden">
-                <Text wrap="truncate-end">{`🎯 ${record.recap.goal}`}</Text>
+                {isWaiting
+                  ? <Text color={settings.waitingColor} wrap="truncate-end">{capsuleText}</Text>
+                  : <Text wrap="truncate-end">{capsuleText}</Text>}
               </Box>
               <Box flexDirection="row" flexShrink={0} gap={1}>
-                {isWaiting && <Text color={settings.waitingColor}>{`⏳ ${L.waiting}`}</Text>}
-                {meta !== '' && <Text dimColor>{meta}</Text>}
-                {progressStats !== '' && <Text dimColor>{`· ${progressStats}`}</Text>}
+                {capsuleMeta !== '' && <Text dimColor>{capsuleMeta}</Text>}
                 <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
               </Box>
             </Box>
@@ -369,10 +381,8 @@ export const register: Register = (on, options) => {
           <Box flexDirection="row" justifyContent="space-between" gap={2}>
             <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
               <Text wrap="truncate-end">
-                <Text color={stateColor}>{'● '}</Text>
-                <Text>
-                  {turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt, 40)}` : record.recap.now}
-                </Text>
+                {turnProgress ? <Text color={stateColor}>{'● '}</Text> : `${DONE_MARK} `}
+                {turnProgress ? workingText : record.recap.now}
               </Text>
             </Box>
             {progressStats !== '' && (

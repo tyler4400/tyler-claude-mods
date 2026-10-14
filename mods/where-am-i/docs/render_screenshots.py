@@ -96,8 +96,8 @@ def render(sample: dict, state: str) -> str:
     parts = [
         text(left, rows[0], sample["goal"], COLORS["text"], bold=True),
         text(right, rows[0], sample["meta"], COLORS["dim"], anchor="end"),
-        text(left, rows[1], "●", color),
-        text(left + 20, rows[1], sample["now"], COLORS["text"]),
+        # 这一轮已完成用 ✅，和 🎯、⏳ 一样与文字连写；工作中是状态色的圆点
+        text(left, rows[1], f"✅ {sample['now']}", COLORS["text"]),
         text(right, rows[1], sample["stats"], COLORS["dim"], anchor="end"),
         text(left, rows[2], sample["action"], color if state == "waiting" else COLORS["dim"]),
     ]
