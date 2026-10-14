@@ -4,12 +4,19 @@ English | [简体中文](README.zh-CN.md)
 
 [Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/) I use myself: plugins whose hooks module runs inside Claude Code. They need Claude Code 2.1.287 or later. Each mod is its own plugin under `mods/`, and `.claude-plugin/marketplace.json` at the root lists them as one marketplace.
 
-| Mod | What it does | Where |
-| --- | --- | --- |
-| [where-am-i](mods/where-am-i/README.md) | A recap card above the prompt: goal, now, next step, what waits on you. Kept across restarts, with one-paragraph details and a fold-to-capsule button | desktop, terminal |
-| [session-title](mods/session-title/README.md) | Keeps the session title in the form `前缀｜MMDD｜主体` with Haiku, and follows the session when its mainline moves | desktop, terminal |
+Both mods work in the desktop app and the terminal.
+
+## where-am-i
+
+A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two keeps the turn's calls, edited files and elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. [More →](mods/where-am-i/README.md)
 
 <img src="mods/where-am-i/docs/card-waiting.en.svg" alt="where-am-i card" width="720">
+
+## session-title
+
+Keeps the session title in the form `前缀｜MMDD｜主体` (prefix｜month-day｜subject). After every turn Haiku checks whether the title still names what the session is working on, rewrites it when the mainline has moved on, and leaves it alone for a passing question. [More →](mods/session-title/README.md)
+
+<img src="mods/session-title/docs/drift.en.svg" alt="How the title follows the session" width="720">
 
 ## Install
 
@@ -26,7 +33,7 @@ claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install where-am-i@tyler-claude-mods --scope user
 ```
 
-Then start a new session, or run `/reload-plugins` in an open one.
+For session-title, use `session-title` in place of `where-am-i`. Then start a new session, or run `/reload-plugins` in an open one.
 
 ## Security
 
