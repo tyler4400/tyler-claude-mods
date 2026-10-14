@@ -79,6 +79,12 @@ describe('where-am-i', () => {
     expect(await ui.find({ type: 'Text', text: /第 7 轮/ })).toBeDefined()
     // 没有等你处理的事时第三行不显示下一步
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^✅ 做到一半$/ })).toBeDefined()
+    // 空闲时胶囊是 ✅ 加目标
+    await ui.press({ key: 'fold' })
+    expect(await ui.find({ type: 'Text', text: /^✅$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^🎯 旧会话的目标$/ })).toBeDefined()
+    await ui.press({ key: 'unfold' })
     await ui.unmount()
   })
 
@@ -96,7 +102,8 @@ describe('where-am-i', () => {
     expect(await ui.find({ type: 'Text', text: /^⏳ 等你：你确认样式$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^17:00 · 0秒$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^✅$/ })).toBeDefined()
+    // 等你时只有 ⏳，没有 ✅
+    expect(await ui.find({ type: 'Text', text: /^✅$/ })).toBeUndefined()
     await ui.press({ key: 'unfold' })
     expect(store.get('pref:folded')).toBe(false)
     await ui.unmount()

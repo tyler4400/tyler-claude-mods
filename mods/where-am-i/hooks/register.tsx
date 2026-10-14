@@ -324,12 +324,13 @@ export const register: Register = (on, options) => {
         }
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
-    const workingText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt, 40)}` : ''
+    // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
+    const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt, 40)}` : record.recap.now
 
     if (await read($, isFolded)) {
       // 胶囊依次优先显示：工作中这一轮在做什么、等你处理的事、目标；放不下时截断这段文字，右侧的时间、用时和展开按钮保持完整
-      const capsuleText = turnProgress
-        ? workingText
+      const capsuleText = isWorking
+        ? nowText
         : isWaiting
           ? `⏳ ${L.waiting}${L.sep}${record.recap.waiting}`
           : `🎯 ${record.recap.goal}`
@@ -341,8 +342,8 @@ export const register: Register = (on, options) => {
           {/* 外层整行，胶囊作为可收缩的子项：内容短时按内容宽，超出一行时收缩 */}
           <Box flexDirection="row">
             <Box flexDirection="row" flexShrink={1} minWidth={0} gap={1} paddingX={1} {...border}>
-              {/* 和第二行一样：工作中是状态色圆点，这一轮完成后是 ✅ */}
-              {turnProgress ? <Text color={stateColor}>{'●'}</Text> : <Text>{DONE_MARK}</Text>}
+              {/* 行首：工作中是状态色圆点；等你时文字自带 ⏳，不加标记；空闲是 ✅ */}
+              {isWorking ? <Text color={stateColor}>{'●'}</Text> : !isWaiting && <Text>{DONE_MARK}</Text>}
               <Box flexShrink={1} minWidth={0} overflow="hidden">
                 {isWaiting
                   ? <Text color={settings.waitingColor} wrap="truncate-end">{capsuleText}</Text>
@@ -382,8 +383,8 @@ export const register: Register = (on, options) => {
           <Box flexDirection="row" justifyContent="space-between" gap={2}>
             <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
               <Text wrap="truncate-end">
-                {turnProgress ? <Text color={stateColor}>{'● '}</Text> : `${DONE_MARK} `}
-                {turnProgress ? workingText : record.recap.now}
+                {isWorking ? <Text color={stateColor}>{'● '}</Text> : `${DONE_MARK} `}
+                {nowText}
               </Text>
             </Box>
             {progressStats !== '' && (
