@@ -2,6 +2,9 @@
 
 # tyler-claude-mods
 
+[![Mods Code](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+[![Mods Code](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+
 我自己在用的 [Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/)：hooks 模块在 Claude Code 里运行的 plugin，需要 Claude Code 2.1.287 或更高版本。每个 mod 是 `mods/` 下的一个独立 plugin，仓库根目录的 `.claude-plugin/marketplace.json` 把它们登记为一个 marketplace。
 
 两个 mod 在 desktop 和终端里都能用。
