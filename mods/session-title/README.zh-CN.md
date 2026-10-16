@@ -2,6 +2,8 @@
 
 # session-title
 
+[![Mods Code](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+
 每轮结束后用 Haiku 按 [title-rules.md](title-rules.md) 的规则检查会话标题，格式为 `前缀｜MMDD｜主体`，例如 `探索｜1013｜ClaudeCode mods调研`。
 
 <img src="docs/sidebar.zh.svg" alt="侧边栏里的会话标题" width="400">
