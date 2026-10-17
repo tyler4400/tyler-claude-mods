@@ -2,8 +2,7 @@
 
 # tyler-claude-mods
 
-[![Mods Code](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
-[![Mods Code](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+[![CI](https://github.com/tyler4400/tyler-claude-mods/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tyler4400/tyler-claude-mods/actions/workflows/ci.yml)
 
 我自己在用的 [Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/)：hooks 模块在 Claude Code 里运行的 plugin，需要 Claude Code 2.1.287 或更高版本。每个 mod 是 `mods/` 下的一个独立 plugin，仓库根目录的 `.claude-plugin/marketplace.json` 把它们登记为一个 marketplace。
 
@@ -11,11 +10,15 @@
 
 ## status-card
 
+[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+
 输入框上方的三行会话卡片：目标、Claude 正在做或刚做完什么、等你处理的事。第二行保留这一轮的调用次数、改动文件数和用时。**详情** 用一段话总结会话主线和接下来该做什么，不进入对话上下文；**折叠** 把卡片收成一行胶囊。摘要按对话保存，重启后还在。借鉴了 [hamzafer](https://github.com/hamzafer) 的 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 源码。[详细说明 →](mods/status-card/README.zh-CN.md)
 
 <img src="mods/status-card/docs/card-waiting.zh.svg" alt="status-card 卡片" width="720">
 
 ## session-title
+
+[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
 
 按「前缀｜MMDD｜主体」维护会话标题。每轮结束后由 Haiku 判断标题是否还说得出会话现在在做的事：主线变了就改，临时插问不动。[详细说明 →](mods/session-title/README.zh-CN.md)
 

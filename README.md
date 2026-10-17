@@ -2,8 +2,7 @@ English | [简体中文](README.zh-CN.md)
 
 # tyler-claude-mods
 
-[![Mods Code](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
-[![Mods Code](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+[![CI](https://github.com/tyler4400/tyler-claude-mods/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/tyler4400/tyler-claude-mods/actions/workflows/ci.yml)
 
 [Claude Code mods](https://claude.dev/blog/getting-started-with-claude-code-mods/) I use myself: plugins whose hooks module runs inside Claude Code. They need Claude Code 2.1.287 or later. Each mod is its own plugin under `mods/`, and `.claude-plugin/marketplace.json` at the root lists them as one marketplace.
 
@@ -11,11 +10,15 @@ Both mods work in the desktop app and the terminal.
 
 ## status-card
 
+[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+
 A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two keeps the turn's calls, edited files and elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) by [hamzafer](https://github.com/hamzafer). [More →](mods/status-card/README.md)
 
 <img src="mods/status-card/docs/card-waiting.en.svg" alt="status-card card" width="720">
 
 ## session-title
+
+[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
 
 Keeps the session title in the form `前缀｜MMDD｜主体` (prefix｜month-day｜subject). After every turn Haiku checks whether the title still names what the session is working on, rewrites it when the mainline has moved on, and leaves it alone for a passing question. [More →](mods/session-title/README.md)
 
