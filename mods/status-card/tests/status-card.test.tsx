@@ -287,6 +287,21 @@ describe('status-card', () => {
     expect((store.get(`rec:${parent}`) as any).recap.goal).toBe('让摘要跨重启保留')
   })
 
+  test('默认保留 180 天：更久没更新的记录在会话启动时清掉', async ($, on) => {
+    const dayAgo = (days: number) => Date.UTC(2026, 9, 13, 9, 0) - days * 24 * 60 * 60 * 1000
+    const store = new Map<string, unknown>([
+      ['rec:recent', { updatedAt: dayAgo(179) }],
+      ['rec:stale', { updatedAt: dayAgo(181) }],
+      ['cache:stale', { updatedAt: dayAgo(181) }],
+      ['pref:folded', true],
+    ])
+    const clock = engine(on, store)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await clock.settle()
+
+    expect([...store.keys()].sort()).toEqual(['pref:folded', 'rec:recent'])
+  })
+
   test('0.5.x 的 conv: 记录按 id: 映射迁移到 rec:', async ($, on) => {
     const record = { recap: { goal: '旧版记录', now: '做到一半', waiting: '', next: '' }, overall: '', turn: 3, lang: 'zh', updatedAt: Date.UTC(2026, 9, 13, 8, 0) }
     const store = new Map<string, unknown>([

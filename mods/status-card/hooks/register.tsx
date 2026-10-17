@@ -15,6 +15,7 @@ import {
   formatStats,
   formatTime,
   intentRequest,
+  isExpired,
   isTypedPrompt,
   labels,
   modelKey,
@@ -23,6 +24,7 @@ import {
   parseOffset,
   parseSummary,
   resolveLang,
+  retentionDaysFrom,
   summaryRequest,
 } from './recap'
 
@@ -37,7 +39,6 @@ const CONV_PREFIX = 'conv:'
 const ID_PREFIX = 'id:'
 const LEGACY_PREFIX = 'session:'
 const FOLDED_KEY = 'pref:folded'
-const DAY_MS = 24 * 60 * 60 * 1000
 const MAX_LOG = 20
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'NotebookEdit', 'MultiEdit'])
 
@@ -78,7 +79,7 @@ function settingsFrom(options: PluginOptions): Settings {
     borderStyle: text('borderStyle', 'round'),
     density: text('density', 'comfortable'),
     showMeta: options.showMeta !== false,
-    retentionDays: typeof options.retentionDays === 'number' && (options.retentionDays > 0 || options.retentionDays === -1) ? options.retentionDays : 180,
+    retentionDays: retentionDaysFrom(options.retentionDays),
   }
 }
 
@@ -108,14 +109,12 @@ async function saveRecord($: Engine, record: SessionRecord): Promise<void> {
   await $.store.set(REC_PREFIX + (await $.session.id()), record)
 }
 
-// retentionDays 为 -1 表示永不清理
 async function pruneOldRecords($: Engine, retentionDays: number): Promise<void> {
-  if (retentionDays === -1) return
   const now = await $.clock.now()
   for (const key of await $.store.keys()) {
     if (![REC_PREFIX, CACHE_PREFIX, CONV_PREFIX, ID_PREFIX, LEGACY_PREFIX].some(prefix => key.startsWith(prefix))) continue
     const entry = (await $.store.get(key)) as { updatedAt?: number } | undefined
-    if (!entry || now - (entry.updatedAt ?? 0) > retentionDays * DAY_MS) await $.store.delete(key)
+    if (!entry || isExpired(entry.updatedAt, now, retentionDays)) await $.store.delete(key)
   }
 }
 

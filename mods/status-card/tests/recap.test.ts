@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isTypedPrompt, modelKey, nextCacheChange, parseIntent, parseOffset, parseSummary, summaryRequest, userTrail } from '../hooks/recap'
+import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isExpired, isTypedPrompt, modelKey, nextCacheChange, parseIntent, parseOffset, parseSummary, retentionDaysFrom, summaryRequest, userTrail } from '../hooks/recap'
 
 describe('detectLang', () => {
   test('中文为主判为 zh，夹杂英文标识符也算', async () => {
@@ -160,5 +160,33 @@ describe('cacheTtlFromTranscript / cacheHint / nextCacheChange', () => {
     expect(nextCacheChange(state(3_600_000), at)).toBe(60_000)
     expect(nextCacheChange(state(300_000), at + 300_000)).toBeUndefined()
     expect(modelKey('claude-opus-5-5[1m]')).toBe('claude-opus-5-5')
+  })
+})
+
+describe('retentionDaysFrom', () => {
+  test('正数照用，-1 表示永不清理', async () => {
+    expect(retentionDaysFrom(90)).toBe(90)
+    expect(retentionDaysFrom(-1)).toBe(-1)
+  })
+  test('没配置或非法值回落到 180', async () => {
+    for (const bad of [undefined, 0, -2, '30', null, NaN]) expect(retentionDaysFrom(bad)).toBe(180)
+  })
+})
+
+describe('isExpired', () => {
+  const DAY = 24 * 60 * 60 * 1000
+  const now = Date.UTC(2026, 9, 13)
+
+  test('超过保留天数才算过期，刚好等于不算', async () => {
+    expect(isExpired(now - 179 * DAY, now, 180)).toBe(false)
+    expect(isExpired(now - 180 * DAY, now, 180)).toBe(false)
+    expect(isExpired(now - 181 * DAY, now, 180)).toBe(true)
+  })
+  test('-1 永不过期，连没有更新时间的记录也保留', async () => {
+    expect(isExpired(now - 3650 * DAY, now, -1)).toBe(false)
+    expect(isExpired(undefined, now, -1)).toBe(false)
+  })
+  test('没有更新时间的记录按很久以前处理', async () => {
+    expect(isExpired(undefined, now, 180)).toBe(true)
   })
 })

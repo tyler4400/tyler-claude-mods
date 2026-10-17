@@ -283,6 +283,18 @@ export function parseOffset(z: string): number {
   return m[1] === '-' ? -minutes : minutes
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/** 摘要保留天数：正数照用，-1 表示永不清理，其他值回落到 180 */
+export function retentionDaysFrom(value: unknown): number {
+  return typeof value === 'number' && (value > 0 || value === -1) ? value : 180
+}
+
+/** 记录是否已超过保留天数没更新；-1 永远不算过期 */
+export function isExpired(updatedAt: number | undefined, now: number, retentionDays: number): boolean {
+  return retentionDays !== -1 && now - (updatedAt ?? 0) > retentionDays * DAY_MS
+}
+
 /** 第二行右侧：调用次数 · 改了几个文件 · 用时 */
 export function formatStats(stats: TurnStats, lang: Lang): string {
   const L = labels(lang)

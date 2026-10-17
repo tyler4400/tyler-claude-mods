@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # mods 需要 Claude Code 2.1.287 或更高；固定版本，升级时手动改
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.294
+      - name: Validate and test every mod
+        run: |
+          for dir in mods/*/; do
+            echo "::group::$dir"
+            claude plugin validate "$dir"
+            claude plugin test "$dir"
+            echo "::endgroup::"
+          done
