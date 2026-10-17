@@ -2,7 +2,9 @@
 <rect width="960" height="240" rx="14" fill="#30302e"/>
 <rect x="16" y="16" width="928" height="208" rx="10" fill="#262624" stroke="#d4943a" stroke-width="1.5"/>
 <text x="36" y="48" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">🎯 Add rate limiting to the public API</text>
-<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">turn 14 · 16:20</text>
+<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">cache 45m</text>
+<text x="840.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">turn 14 · 16:20</text>
+<text x="861.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end"> · </text>
 <text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ Wired the limiter into the gateway and added tests</text>
 <text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">18 calls · 3 files edited · 2m41s</text>
 <text x="36" y="120" fill="#d4943a" font-size="14" text-anchor="start">⏳ waiting on you: Pick a default limit, 60 or 120 requests per minute</text>

@@ -2,7 +2,9 @@
 <rect width="960" height="216" rx="14" fill="#30302e"/>
 <rect x="16" y="16" width="928" height="184" rx="10" fill="#262624" stroke="#d4943a" stroke-width="1.5"/>
 <text x="36" y="48" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">🎯 给公开 API 加限流</text>
-<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">第 14 轮 · 16:20</text>
+<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">缓存 45 分</text>
+<text x="833.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">第 14 轮 · 16:20</text>
+<text x="854.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end"> · </text>
 <text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ 已把限流器接进网关并补上测试</text>
 <text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">18 次调用 · 改 3 个文件 · 2分41秒</text>
 <text x="36" y="120" fill="#d4943a" font-size="14" text-anchor="start">⏳ 等你：默认限额定为每分钟 60 次还是 120 次</text>

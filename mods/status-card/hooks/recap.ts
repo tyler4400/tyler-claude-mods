@@ -22,8 +22,7 @@ const LABELS = {
     failed: '详情生成失败，稍后再试。',
     noRecap: '还没有摘要，等这一轮结束后再试。',
     goalPending: '目标会在这一轮结束后总结',
-    cacheLeft: (minutes: number) => `缓存还剩 ${minutes} 分`,
-    cacheLow: (minutes: number) => `缓存仅剩 ${minutes} 分`,
+    cacheLeft: (minutes: number) => `缓存 ${minutes} 分`,
     cacheExpired: '缓存过期',
   },
   en: {
@@ -41,8 +40,7 @@ const LABELS = {
     failed: 'Could not write the details. Try again later.',
     noRecap: 'No recap yet. Try again after this turn ends.',
     goalPending: 'The goal is summarized when this turn ends',
-    cacheLeft: (minutes: number) => `cache ${minutes}m left`,
-    cacheLow: (minutes: number) => `only ${minutes}m of cache left`,
+    cacheLeft: (minutes: number) => `cache ${minutes}m`,
     cacheExpired: 'cache expired',
   },
 }
@@ -339,7 +337,7 @@ export function cacheHint(state: CacheState | null, now: number, offsetMinutes: 
   const left = entry ? cacheLeftMs(entry, now) : 0
   if (left <= 0) return { text: L.cacheExpired, tone: 'expired' }
   const minutes = Math.ceil(left / MINUTE_MS)
-  return left > CACHE_LOW_MS ? { text: L.cacheLeft(minutes), tone: 'fresh' } : { text: L.cacheLow(minutes), tone: 'low' }
+  return { text: L.cacheLeft(minutes), tone: left > CACHE_LOW_MS ? 'fresh' : 'low' }
 }
 
 /** 到提示的分钟数下一次变化还有多久；已失效或没有记录时不用再刷新 */

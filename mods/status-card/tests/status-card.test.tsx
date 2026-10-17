@@ -332,10 +332,10 @@ describe('status-card', () => {
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     // 缓存从请求发出时算起，还剩 59 分 30 秒，向上取整
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存还剩 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存 60 分$/ })).toBeDefined()
     // 折叠后右侧是时间和缓存，不再显示用时
     await ui.press({ key: 'fold' })
-    expect(await ui.find({ type: 'Text', text: /^17:00 · 缓存还剩 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:00 · 缓存 60 分$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     await ui.unmount()
 
@@ -349,7 +349,7 @@ describe('status-card', () => {
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     // 10 分钟以内单独标红
     expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · $/ })).toBeDefined()
-    expect(await view.find({ type: 'Text', text: /^缓存仅剩 10 分$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: /^缓存 10 分$/ })).toBeDefined()
     await view.unmount()
 
     await clock.advance(10 * 60_000)
@@ -378,7 +378,7 @@ describe('status-card', () => {
     await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
     await clock.settle()
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存还剩 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存 60 分$/ })).toBeDefined()
     await ui.unmount()
   })
 

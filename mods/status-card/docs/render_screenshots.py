@@ -16,6 +16,7 @@ COLORS = {
     "detail": "#cfcfca",
     "waiting": "#d4943a",
     "idle": "#4caf50",
+    "low": "#e5534b",
 }
 
 # 两种状态 × 两种语言；数据是虚构的示例会话
@@ -24,6 +25,7 @@ SAMPLES = {
         "waiting": {
             "goal": "🎯 Add rate limiting to the public API",
             "meta": "turn 14 · 16:20",
+            "cache": ("cache 45m", "fresh"),
             "now": "Wired the limiter into the gateway and added tests",
             "stats": "18 calls · 3 files edited · 2m41s",
             "action": "⏳ waiting on you: Pick a default limit, 60 or 120 requests per minute",
@@ -35,6 +37,7 @@ SAMPLES = {
         "idle": {
             "goal": "🎯 Add rate limiting to the public API",
             "meta": "turn 15 · 16:32",
+            "cache": ("cache 6m", "low"),
             "now": "Set the default to 120 requests per minute and updated the docs",
             "stats": "7 calls · 2 files edited · 1m05s",
             "action": "",
@@ -45,6 +48,7 @@ SAMPLES = {
         "waiting": {
             "goal": "🎯 给公开 API 加限流",
             "meta": "第 14 轮 · 16:20",
+            "cache": ("缓存 45 分", "fresh"),
             "now": "已把限流器接进网关并补上测试",
             "stats": "18 次调用 · 改 3 个文件 · 2分41秒",
             "action": "⏳ 等你：默认限额定为每分钟 60 次还是 120 次",
@@ -55,6 +59,7 @@ SAMPLES = {
         "idle": {
             "goal": "🎯 给公开 API 加限流",
             "meta": "第 15 轮 · 16:32",
+            "cache": ("缓存 6 分", "low"),
             "now": "默认限额定为每分钟 120 次，文档已更新",
             "stats": "7 次调用 · 改 2 个文件 · 1分05秒",
             "action": "",
@@ -89,13 +94,28 @@ def text(x: float, y: float, content: str, color: str, *, bold=False, anchor="st
     return f'<text x="{x}" y="{y}" fill="{color}" font-size="{size}" text-anchor="{anchor}"{weight}>{escape(content)}</text>'
 
 
+def meta_parts(sample: dict, right: float, y: float) -> list[str]:
+    """右上角：轮次和时间，轮到你时后面跟缓存提示；提示不到 10 分钟时标红"""
+    if "cache" not in sample:
+        return [text(right, y, sample["meta"], COLORS["dim"], anchor="end")]
+    cache_text, tone = sample["cache"]
+    cache_color = COLORS["low"] if tone == "low" else COLORS["dim"]
+    cache_end = right - text_width(cache_text, 14)
+    separator_width = text_width(" · ", 14)
+    return [
+        text(right, y, cache_text, cache_color, anchor="end"),
+        text(cache_end - separator_width, y, sample["meta"], COLORS["dim"], anchor="end"),
+        text(cache_end, y, " · ", COLORS["dim"], anchor="end"),
+    ]
+
+
 def render(sample: dict, state: str) -> str:
     color = COLORS[state]
     left, right = 36, WIDTH - 36
     rows = [48, 84, 120]
     parts = [
         text(left, rows[0], sample["goal"], COLORS["text"], bold=True),
-        text(right, rows[0], sample["meta"], COLORS["dim"], anchor="end"),
+        *meta_parts(sample, right, rows[0]),
         # 这一轮已完成用 ✅，和 🎯、⏳ 一样与文字连写；工作中是状态色的圆点
         text(left, rows[1], f"✅ {sample['now']}", COLORS["text"]),
         text(right, rows[1], sample["stats"], COLORS["dim"], anchor="end"),

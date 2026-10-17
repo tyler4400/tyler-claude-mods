@@ -144,10 +144,10 @@ describe('cacheTtlFromTranscript / cacheHint / nextCacheChange', () => {
   })
 
   test('10 分钟以上是 fresh，以内是 low，过期是 expired；不是今天的不显示', async () => {
-    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存还剩 60 分', tone: 'fresh' })
-    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'en')).toEqual({ text: 'cache 60m left', tone: 'fresh' })
-    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存仅剩 10 分', tone: 'low' })
-    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'only 5m of cache left', tone: 'low' })
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存 60 分', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'en')).toEqual({ text: 'cache 60m', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存 10 分', tone: 'low' })
+    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'cache 5m', tone: 'low' })
     expect(cacheHint(state(300_000), at + 300_000, 480, 'zh')).toEqual({ text: '缓存过期', tone: 'expired' })
     expect(cacheHint({ ...state(3_600_000), model: 'sonnet' }, at, 480, 'en')).toEqual({ text: 'cache expired', tone: 'expired' })
     // 本机时间 17:00 用的缓存，到第二天 00:10 不再显示
