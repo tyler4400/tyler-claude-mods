@@ -1,6 +1,6 @@
 {
   "name": "status-card",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "输入框上方的会话摘要卡片：目标、现在、下一步、等你处理的事。跨重启保留，回看旧会话也能看到；可展开详情、折叠成胶囊。",
   "author": {
     "name": "tyler4400",
@@ -76,9 +76,9 @@
     "retentionDays": {
       "type": "number",
       "title": "摘要保留天数",
-      "description": "超过这么多天没更新的会话摘要会被清理",
-      "default": 30,
-      "min": 1
+      "description": "超过这么多天没更新的会话摘要会被清理；填 -1 永不清理",
+      "default": 180,
+      "min": -1
     }
   }
 }

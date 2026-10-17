@@ -78,7 +78,7 @@ function settingsFrom(options: PluginOptions): Settings {
     borderStyle: text('borderStyle', 'round'),
     density: text('density', 'comfortable'),
     showMeta: options.showMeta !== false,
-    retentionDays: typeof options.retentionDays === 'number' && options.retentionDays > 0 ? options.retentionDays : 30,
+    retentionDays: typeof options.retentionDays === 'number' && (options.retentionDays > 0 || options.retentionDays === -1) ? options.retentionDays : 180,
   }
 }
 
@@ -108,7 +108,9 @@ async function saveRecord($: Engine, record: SessionRecord): Promise<void> {
   await $.store.set(REC_PREFIX + (await $.session.id()), record)
 }
 
+// retentionDays 为 -1 表示永不清理
 async function pruneOldRecords($: Engine, retentionDays: number): Promise<void> {
+  if (retentionDays === -1) return
   const now = await $.clock.now()
   for (const key of await $.store.keys()) {
     if (![REC_PREFIX, CACHE_PREFIX, CONV_PREFIX, ID_PREFIX, LEGACY_PREFIX].some(prefix => key.startsWith(prefix))) continue

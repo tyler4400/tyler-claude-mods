@@ -68,7 +68,7 @@ Change these in `/config` or `/plugin configure status-card@tyler-claude-mods`. 
 | `borderStyle` | `round` | Card border: `round`, `single`, `bold`, `double`, `none` |
 | `density` | `comfortable` | Line spacing: `comfortable` leaves a blank row between lines; `compact` does not |
 | `showMeta` | `true` | Show "turn N · time" |
-| `retentionDays` | `30` | Recaps not updated for this many days are removed |
+| `retentionDays` | `180` | Recaps not updated for this many days are removed; `-1` never removes them |
 
 ## How it works
 

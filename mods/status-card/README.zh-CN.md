@@ -68,7 +68,7 @@ claude plugin install status-card@tyler-claude-mods --scope user
 | `borderStyle` | `round` | 卡片边框：`round`、`single`、`bold`、`double`、`none` |
 | `density` | `comfortable` | 行距：`comfortable` 行与行之间空一行；`compact` 紧凑 |
 | `showMeta` | `true` | 显示"第 N 轮 · 时间" |
-| `retentionDays` | `30` | 超过这么多天没更新的会话摘要会被清理 |
+| `retentionDays` | `180` | 超过这么多天没更新的会话摘要会被清理；`-1` 永不清理 |
 
 ## 怎么工作的
 
