@@ -22,8 +22,9 @@ const LABELS = {
     failed: '详情生成失败，稍后再试。',
     noRecap: '还没有摘要，等这一轮结束后再试。',
     goalPending: '目标会在这一轮结束后总结',
-    cacheLeft: (minutes: number) => `缓存 ${minutes} 分`,
-    cacheExpired: '缓存已失效',
+    cacheLeft: (minutes: number) => `缓存还剩 ${minutes} 分`,
+    cacheLow: (minutes: number) => `缓存仅剩 ${minutes} 分`,
+    cacheExpired: '缓存过期',
   },
   en: {
     turn: (n: number) => `turn ${n}`,
@@ -40,7 +41,8 @@ const LABELS = {
     failed: 'Could not write the details. Try again later.',
     noRecap: 'No recap yet. Try again after this turn ends.',
     goalPending: 'The goal is summarized when this turn ends',
-    cacheLeft: (minutes: number) => `cache ${minutes}m`,
+    cacheLeft: (minutes: number) => `cache ${minutes}m left`,
+    cacheLow: (minutes: number) => `only ${minutes}m of cache left`,
     cacheExpired: 'cache expired',
   },
 }
@@ -267,12 +269,12 @@ function isSameLocalDay(a: number, b: number, offsetMinutes: number): boolean {
   return x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth() && x.getUTCDate() === y.getUTCDate()
 }
 
-/** 更新时间：当天只显示 `HH:mm`，其他日子 `MMDD HH:mm`（如 1013 20:06），按本机时区 */
+/** 更新时间：当天显示 `HH:mm`，按本机时区；其他日子返回空字符串，不显示（对话里每条回复本来就有日期时间） */
 export function formatTime(at: number, now: number, offsetMinutes: number): string {
+  if (!isSameLocalDay(at, now, offsetMinutes)) return ''
   const a = new Date(at + offsetMinutes * 60_000)
   const pad = (n: number) => String(n).padStart(2, '0')
-  const time = `${pad(a.getUTCHours())}:${pad(a.getUTCMinutes())}`
-  return isSameLocalDay(at, now, offsetMinutes) ? time : `${pad(a.getUTCMonth() + 1)}${pad(a.getUTCDate())} ${time}`
+  return `${pad(a.getUTCHours())}:${pad(a.getUTCMinutes())}`
 }
 
 /** `date +%z` 的输出（+0800）转成分钟 */
@@ -324,8 +326,8 @@ function cacheLeftMs(entry: CacheEntry, now: number): number {
 }
 
 /**
- * 右上角的缓存提示。缓存不是今天用过的不显示；当前模型没有记录（刚切到一个这次还没用过的模型）算失效。
- * 分钟数向上取整，颜色按显示的分钟数：10 分以上绿，10 分及以下黄
+ * 右上角的缓存提示。缓存不是今天用过的不显示；当前模型没有记录（刚切到一个这次还没用过的模型）算过期。
+ * 分钟数向上取整：10 分以上是 fresh，10 分及以下是 low（卡片上标红）
  */
 export function cacheHint(state: CacheState | null, now: number, offsetMinutes: number, lang: Lang): CacheHint | undefined {
   const entries = state ? Object.values(state.byModel) : []
@@ -336,7 +338,8 @@ export function cacheHint(state: CacheState | null, now: number, offsetMinutes: 
   const entry = state.byModel[state.model]
   const left = entry ? cacheLeftMs(entry, now) : 0
   if (left <= 0) return { text: L.cacheExpired, tone: 'expired' }
-  return { text: L.cacheLeft(Math.ceil(left / MINUTE_MS)), tone: left > CACHE_LOW_MS ? 'fresh' : 'low' }
+  const minutes = Math.ceil(left / MINUTE_MS)
+  return left > CACHE_LOW_MS ? { text: L.cacheLeft(minutes), tone: 'fresh' } : { text: L.cacheLow(minutes), tone: 'low' }
 }
 
 /** 到提示的分钟数下一次变化还有多久；已失效或没有记录时不用再刷新 */

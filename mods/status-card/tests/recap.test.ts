@@ -107,14 +107,14 @@ describe('countTurns / formatTime / parseOffset', () => {
       { role: 'user', text: '继续' },
     ])).toBe(2)
   })
-  test('当天只显示时间，其他日子带 MMDD，按本机时区', async () => {
+  test('当天只显示时间，其他日子不显示，按本机时区', async () => {
     const offset = parseOffset('+0800')
     expect(offset).toBe(480)
     const at = Date.UTC(2026, 9, 13, 9, 5) // 本地 1013 17:05
     expect(formatTime(at, at + 60_000, offset)).toBe('17:05')
-    expect(formatTime(at, at + 86_400_000, offset)).toBe('1013 17:05')
+    expect(formatTime(at, at + 86_400_000, offset)).toBe('')
     // UTC 还是同一天，本地已经是第二天
-    expect(formatTime(at, Date.UTC(2026, 9, 13, 17, 0), offset)).toBe('1013 17:05')
+    expect(formatTime(at, Date.UTC(2026, 9, 13, 17, 0), offset)).toBe('')
   })
 })
 
@@ -144,10 +144,11 @@ describe('cacheTtlFromTranscript / cacheHint / nextCacheChange', () => {
   })
 
   test('10 分钟以上是 fresh，以内是 low，过期是 expired；不是今天的不显示', async () => {
-    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存 60 分', tone: 'fresh' })
-    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存 10 分', tone: 'low' })
-    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'cache 5m', tone: 'low' })
-    expect(cacheHint(state(300_000), at + 300_000, 480, 'zh')).toEqual({ text: '缓存已失效', tone: 'expired' })
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存还剩 60 分', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'en')).toEqual({ text: 'cache 60m left', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存仅剩 10 分', tone: 'low' })
+    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'only 5m of cache left', tone: 'low' })
+    expect(cacheHint(state(300_000), at + 300_000, 480, 'zh')).toEqual({ text: '缓存过期', tone: 'expired' })
     expect(cacheHint({ ...state(3_600_000), model: 'sonnet' }, at, 480, 'en')).toEqual({ text: 'cache expired', tone: 'expired' })
     // 本机时间 17:00 用的缓存，到第二天 00:10 不再显示
     expect(cacheHint(state(3_600_000), Date.UTC(2026, 9, 13, 16, 10), 480, 'zh')).toBeUndefined()

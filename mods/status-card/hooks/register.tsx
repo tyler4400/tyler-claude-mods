@@ -3,7 +3,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
-import type { CacheHint, CacheState, DetailView, Lang, SessionRecord, TurnProgress, TurnStats } from '../types'
+import type { CacheState, DetailView, Lang, SessionRecord, TurnProgress, TurnStats } from '../types'
 import {
   cacheHint,
   cacheTtlFromTranscript,
@@ -53,8 +53,6 @@ const detailView = atom({ plugin: 'status-card', key: 'detail' } as const, null 
 const transcriptPath = atom({ plugin: 'status-card', key: 'transcriptPath' } as const, '')
 // 不放进 SessionRecord：摘要在后台慢慢生成，写回记录时会盖掉这期间更新的缓存状态
 const cacheAtom = atom({ plugin: 'status-card', key: 'cache' } as const, null as CacheState | null)
-
-const CACHE_COLORS: Record<CacheHint['tone'], string> = { fresh: 'success', low: 'warning', expired: 'error' }
 
 type Settings = {
   language: unknown
@@ -441,12 +439,12 @@ export const register: Register = (on, options) => {
     const isWaiting = !isWorking && record.recap.waiting !== ''
     const stateColor = isWorking ? settings.accentColor : isWaiting ? settings.waitingColor : settings.idleColor
     const now = await $.clock.now()
-    const updatedAt = formatTime(record.updatedAt, now, offsetMinutes)
     // 读 clockNow 是为了让空闲时的定时刷新重画卡片；缓存提示只在轮到你时显示
     await read($, clockNow)
     const cache = isWorking ? undefined : cacheHint(await read($, cacheAtom), now, offsetMinutes, record.lang)
-    // 工作中显示正在进行的这一轮
-    const meta = settings.showMeta ? `${L.turn(turnProgress?.turn ?? record.turn)} · ${updatedAt}` : ''
+    // 更新时间只在当天显示；右上角是轮次（工作中是正在进行的这一轮）和更新时间
+    const updatedAt = settings.showMeta ? formatTime(record.updatedAt, now, offsetMinutes) : ''
+    const meta = settings.showMeta ? [L.turn(turnProgress?.turn ?? record.turn), updatedAt].filter(part => part !== '').join(' · ') : ''
     const goal = record.draft ? L.goalPending : record.recap.goal
 
     const border = settings.borderStyle === 'none' ? {} : { borderStyle: settings.borderStyle, borderColor: stateColor }
@@ -463,15 +461,14 @@ export const register: Register = (on, options) => {
     // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
     const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt)}` : record.recap.now
 
-    // 右上角的暗色文字，轮到你时后面跟缓存提示：彩色圆点和暗色文字是同一个 Text 里平级的子 Text，
-    // 和第二行的「● 本轮」同一种写法；外层不加 dimColor，免得圆点也被压暗
+    // 右上角的暗色文字，轮到你时后面跟缓存提示；缓存不到 10 分钟时这段提示用红色
     const metaText = (prefix: string) => {
-      if (!cache) return prefix === '' ? undefined : <Text dimColor>{prefix}</Text>
-      const dot = <Text color={CACHE_COLORS[cache.tone]}>{'●'}</Text>
-      const label = <Text dimColor>{` ${cache.text}`}</Text>
-      return prefix === ''
-        ? <Text>{dot}{label}</Text>
-        : <Text><Text dimColor>{`${prefix} · `}</Text>{dot}{label}</Text>
+      if (cache?.tone !== 'low') {
+        const text = [prefix, cache?.text ?? ''].filter(part => part !== '').join(' · ')
+        return text === '' ? undefined : <Text dimColor>{text}</Text>
+      }
+      const warning = <Text color="error">{cache.text}</Text>
+      return prefix === '' ? warning : <Text><Text dimColor>{`${prefix} · `}</Text>{warning}</Text>
     }
 
     if (await read($, isFolded)) {
@@ -481,8 +478,8 @@ export const register: Register = (on, options) => {
         : isWaiting
           ? `⏳ ${L.waiting}${L.sep}${record.recap.waiting}`
           : `🎯 ${goal}`
-      // 右侧：工作中是时间和实时用时，轮到你时是时间和缓存提示
-      const capsuleMeta = [settings.showMeta ? updatedAt : '', isWorking && stats ? formatElapsed(stats.elapsedMs, record.lang) : '']
+      // 右侧不显示轮次：工作中是时间和实时用时，轮到你时是时间和缓存提示
+      const capsuleMeta = [updatedAt, isWorking && stats ? formatElapsed(stats.elapsedMs, record.lang) : '']
         .filter(part => part !== '')
         .join(' · ')
       return (
