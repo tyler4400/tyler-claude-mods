@@ -442,8 +442,8 @@ export const register: Register = (on, options) => {
     // 读 clockNow 是为了让空闲时的定时刷新重画卡片；缓存提示只在轮到你时显示
     await read($, clockNow)
     const cache = isWorking ? undefined : cacheHint(await read($, cacheAtom), now, offsetMinutes, record.lang)
-    // 更新时间只在当天显示；右上角是轮次（工作中是正在进行的这一轮）和更新时间
-    const updatedAt = settings.showMeta ? formatTime(record.updatedAt, now, offsetMinutes) : ''
+    // 右上角是轮次和时间，时间只在当天显示：工作中是正在进行的这一轮和你发出消息的时间，轮到你时是上一轮和摘要更新的时间
+    const updatedAt = settings.showMeta ? formatTime(turnProgress?.startedAt ?? record.updatedAt, now, offsetMinutes) : ''
     const meta = settings.showMeta ? [L.turn(turnProgress?.turn ?? record.turn), updatedAt].filter(part => part !== '').join(' · ') : ''
     const goal = record.draft ? L.goalPending : record.recap.goal
 

@@ -170,6 +170,8 @@ describe('status-card', () => {
     const clock = engine(on, store)
     await oneTurn($, clock)
 
+    // 上一轮 17:00 结束，过了 5 分钟才发下一条
+    await clock.advance(5 * 60_000)
     await $.prompt.submit({ text: '详情改成最多 180 字' } as any)
     await clock.settle()
     await $.tool.call({ tool: 'Edit', file_path: '/work/mods/recap.ts', old_string: 'a', new_string: 'b' } as any)
@@ -178,13 +180,13 @@ describe('status-card', () => {
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
     expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
-    // 轮次是正在进行的这一轮
-    expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:00$/ })).toBeDefined()
+    // 轮次是正在进行的这一轮，时间是你发出消息的时间
+    expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:05$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
     await ui.press({ key: 'fold' })
     expect(await ui.find({ type: 'Text', text: /^本轮：把详情上限改成 180 字$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^17:00 · 1分32秒$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:05 · 1分32秒$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^●$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     await ui.unmount()
@@ -193,7 +195,7 @@ describe('status-card', () => {
     await clock.settle()
     const idle = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await idle.find({ type: 'Text', text: /本轮/ })).toBeUndefined()
-    expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:01$/ })).toBeDefined()
+    expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:06$/ })).toBeDefined()
     // 轮到你时保留这一轮的最终统计，并写进 store
     expect(await idle.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     await idle.unmount()

@@ -18,7 +18,7 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 
 Always three lines:
 
-1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress; the update time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time). When it is your turn, the **cache hint** follows the time; see below.
+1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress and the time is when you sent its message; the time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time). When it is your turn, the **cache hint** follows the time; see below.
 2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase; after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
