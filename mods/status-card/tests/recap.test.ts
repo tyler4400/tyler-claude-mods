@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isTypedPrompt, parseIntent, parseOffset, parseSummary, summaryRequest, userTrail } from '../hooks/recap'
+import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isTypedPrompt, modelKey, nextCacheChange, parseIntent, parseOffset, parseSummary, summaryRequest, userTrail } from '../hooks/recap'
 
 describe('detectLang', () => {
   test('中文为主判为 zh，夹杂英文标识符也算', async () => {
@@ -126,5 +126,38 @@ describe('formatElapsed / parseIntent', () => {
   })
   test('去掉引号，只取第一行', async () => {
     expect(parseIntent('「改卡片布局」\n多余的解释')).toBe('改卡片布局')
+  })
+})
+
+describe('cacheTtlFromTranscript / cacheHint / nextCacheChange', () => {
+  const row = (m5: number, h1: number, extra: object = {}) =>
+    JSON.stringify({ type: 'assistant', ...extra, message: { usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
+  const at = Date.UTC(2026, 9, 13, 9, 0)
+  const state = (ttlMs: number) => ({ model: 'opus', byModel: { opus: { at, ttlMs } }, updatedAt: at })
+
+  test('取主线程最近一次写入缓存的 TTL，两种都写时按 5 分钟', async () => {
+    expect(cacheTtlFromTranscript([row(0, 10), row(0, 0)].join('\n'))).toBe(3_600_000)
+    expect(cacheTtlFromTranscript([row(0, 10), row(5, 0)].join('\n'))).toBe(300_000)
+    expect(cacheTtlFromTranscript(row(3, 10))).toBe(300_000)
+    expect(cacheTtlFromTranscript([row(0, 10), row(5, 0, { isSidechain: true }), 'oops'].join('\n'))).toBe(3_600_000)
+    expect(cacheTtlFromTranscript('{"type":"user","message":{"content":"ephemeral_"}}')).toBeUndefined()
+  })
+
+  test('10 分钟以上是 fresh，以内是 low，过期是 expired；不是今天的不显示', async () => {
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存 60 分', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存 10 分', tone: 'low' })
+    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'cache 5m', tone: 'low' })
+    expect(cacheHint(state(300_000), at + 300_000, 480, 'zh')).toEqual({ text: '缓存已失效', tone: 'expired' })
+    expect(cacheHint({ ...state(3_600_000), model: 'sonnet' }, at, 480, 'en')).toEqual({ text: 'cache expired', tone: 'expired' })
+    // 本机时间 17:00 用的缓存，到第二天 00:10 不再显示
+    expect(cacheHint(state(3_600_000), Date.UTC(2026, 9, 13, 16, 10), 480, 'zh')).toBeUndefined()
+    expect(cacheHint(null, at, 480, 'zh')).toBeUndefined()
+  })
+
+  test('在分钟数变化那一刻刷新，过期后不再刷新', async () => {
+    expect(nextCacheChange(state(3_600_000), at + 30_000)).toBe(30_000)
+    expect(nextCacheChange(state(3_600_000), at)).toBe(60_000)
+    expect(nextCacheChange(state(300_000), at + 300_000)).toBeUndefined()
+    expect(modelKey('claude-opus-5-5[1m]')).toBe('claude-opus-5-5')
   })
 })

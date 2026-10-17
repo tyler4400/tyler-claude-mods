@@ -3,8 +3,10 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
-import type { DetailView, Lang, SessionRecord, TurnProgress, TurnStats } from '../types'
+import type { CacheHint, CacheState, DetailView, Lang, SessionRecord, TurnProgress, TurnStats } from '../types'
 import {
+  cacheHint,
+  cacheTtlFromTranscript,
   clip,
   countTurns,
   describeTool,
@@ -15,6 +17,8 @@ import {
   intentRequest,
   isTypedPrompt,
   labels,
+  modelKey,
+  nextCacheChange,
   parseIntent,
   parseOffset,
   parseSummary,
@@ -25,9 +29,10 @@ import {
 type Engine = EngineInterface
 
 // store 是 ~/.claude/plugins/store/ 下本 plugin 的 JSON 文件
-// rec:<session id> 是一个 session 的记录。以下是旧格式，只读不写：
+// rec:<session id> 是一个 session 的记录，cache:<session id> 是它的提示缓存状态。以下是旧格式，只读不写：
 // conv:<指纹> 和 id:<session id>（指向它属于的 conv:）是 0.3.0–0.5.x 的，session:<id> 是 0.3.0 之前的
 const REC_PREFIX = 'rec:'
+const CACHE_PREFIX = 'cache:'
 const CONV_PREFIX = 'conv:'
 const ID_PREFIX = 'id:'
 const LEGACY_PREFIX = 'session:'
@@ -46,6 +51,10 @@ const isFolded = atom({ plugin: 'status-card', key: 'isFolded' } as const, false
 const detailView = atom({ plugin: 'status-card', key: 'detail' } as const, null as DetailView | null)
 // classic.SessionStart 给的 transcript 路径，fork 时靠它找到原 session
 const transcriptPath = atom({ plugin: 'status-card', key: 'transcriptPath' } as const, '')
+// 不放进 SessionRecord：摘要在后台慢慢生成，写回记录时会盖掉这期间更新的缓存状态
+const cacheAtom = atom({ plugin: 'status-card', key: 'cache' } as const, null as CacheState | null)
+
+const CACHE_COLORS: Record<CacheHint['tone'], string> = { fresh: 'success', low: 'warning', expired: 'error' }
 
 type Settings = {
   language: unknown
@@ -104,7 +113,7 @@ async function saveRecord($: Engine, record: SessionRecord): Promise<void> {
 async function pruneOldRecords($: Engine, retentionDays: number): Promise<void> {
   const now = await $.clock.now()
   for (const key of await $.store.keys()) {
-    if (![REC_PREFIX, CONV_PREFIX, ID_PREFIX, LEGACY_PREFIX].some(prefix => key.startsWith(prefix))) continue
+    if (![REC_PREFIX, CACHE_PREFIX, CONV_PREFIX, ID_PREFIX, LEGACY_PREFIX].some(prefix => key.startsWith(prefix))) continue
     const entry = (await $.store.get(key)) as { updatedAt?: number } | undefined
     if (!entry || now - (entry.updatedAt ?? 0) > retentionDays * DAY_MS) await $.store.delete(key)
   }
@@ -146,6 +155,10 @@ let lang: Lang = 'zh'
 // 本机时区相对 UTC 的分钟数：mod 运行环境的时区不一定是本机的
 let offsetMinutes = 0
 let ticker: { cancel: () => void } | undefined
+// 空闲时在缓存提示的分钟数变化那一刻刷新一次
+let cacheTimer: { cancel: () => void } | undefined
+// 主线程这一轮最后一次请求：哪个模型、什么时候发出；缓存从这一刻重新计时
+let lastStep: { model: string; at: number } | undefined
 
 // 占位卡片还没有摘要内容，不能当作上一份摘要
 async function lastRecap($: Engine): Promise<SessionRecord | null> {
@@ -168,6 +181,53 @@ async function writeIntent($: Engine, text: string): Promise<void> {
 async function tick($: Engine): Promise<void> {
   const now = await $.clock.now()
   await update($, clockNow, () => now)
+}
+
+async function saveCache($: Engine, state: CacheState | null): Promise<void> {
+  await update($, cacheAtom, () => state)
+  const key = CACHE_PREFIX + (await $.session.id())
+  if (state) await $.store.set(key, state)
+  else await $.store.delete(key)
+}
+
+async function restoreCache($: Engine): Promise<void> {
+  const saved = (await $.store.get(CACHE_PREFIX + (await $.session.id()))) as CacheState | undefined
+  await update($, cacheAtom, () => saved ?? null)
+  await scheduleCacheTick($)
+}
+
+// TTL 只从 transcript 读；读不到时这个模型不记，卡片上就不显示
+async function readCacheTtl($: Engine): Promise<number | undefined> {
+  const path = await read($, transcriptPath)
+  if (!path) return undefined
+  try {
+    const { stdout } = await $.process.run(['sh', '-c', 'grep -F \'"ephemeral_\' "$1" | tail -n 20', 'sh', path])
+    return cacheTtlFromTranscript(stdout)
+  } catch {
+    return undefined
+  }
+}
+
+async function recordCache($: Engine): Promise<void> {
+  const step = lastStep
+  lastStep = undefined
+  if (!step) return
+  const byModel = { ...(await read($, cacheAtom))?.byModel }
+  const ttlMs = await readCacheTtl($)
+  if (ttlMs) byModel[step.model] = { at: step.at, ttlMs }
+  else delete byModel[step.model]
+  await saveCache($, { model: step.model, byModel, updatedAt: step.at })
+}
+
+async function scheduleCacheTick($: Engine): Promise<void> {
+  cacheTimer?.cancel()
+  cacheTimer = undefined
+  const delay = nextCacheChange(await read($, cacheAtom), await $.clock.now())
+  if (delay === undefined) return
+  cacheTimer = $.clock.after(delay, async () => {
+    await tick($)
+    await scheduleCacheTick($)
+  })
 }
 
 async function summarize($: Engine, answer: string, stats: TurnStats | undefined, turn: number | undefined): Promise<void> {
@@ -247,6 +307,7 @@ export const register: Register = (on, options) => {
     }
     await pruneOldRecords($, settings.retentionDays)
     await restoreRecord($)
+    await restoreCache($)
     const folded = await $.store.get(FOLDED_KEY)
     if (typeof folded === 'boolean') await update($, isFolded, () => folded)
     return result
@@ -257,6 +318,16 @@ export const register: Register = (on, options) => {
     const result = await next(e)
     await update($, transcriptPath, () => e.transcript_path)
     if (!(await read($, recordAtom))) await restoreRecord($)
+    if (!(await read($, cacheAtom))) await restoreCache($)
+    return result
+  })
+
+  // 切换模型后提示跟着换成新模型的缓存；切回来时原模型的缓存没过期就继续显示剩余时间
+  on('classic.PostModelSwitch', async ($, e, next) => {
+    const result = await next(e)
+    const state = await read($, cacheAtom)
+    if (state) await saveCache($, { ...state, model: modelKey(e.to_model) })
+    await scheduleCacheTick($)
     return result
   })
 
@@ -266,6 +337,8 @@ export const register: Register = (on, options) => {
     if (e.reason === 'clear' || e.reason === 'resume') {
       await update($, recordAtom, () => null)
       await update($, transcriptPath, () => '')
+      await update($, cacheAtom, () => null)
+      cacheTimer?.cancel()
       await update($, detailView, () => null)
       await update($, isExpanded, () => false)
     }
@@ -295,6 +368,7 @@ export const register: Register = (on, options) => {
     }
     ticker?.cancel()
     ticker = $.clock.every(1000, () => void tick($))
+    cacheTimer?.cancel()
     const text = e.text
     $.clock.after(0, () => void writeIntent($, text))
     return next(e)
@@ -313,6 +387,12 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
+  // 只记时间：主线程每次请求都会让缓存重新计时，子代理的请求不算
+  on('turn.step', async function* ($, e, next) {
+    if (!e.agentId) lastStep = { model: modelKey(e.model), at: await $.clock.now() }
+    return yield* next(e)
+  })
+
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
     if (!e.agentId) {
@@ -323,6 +403,8 @@ export const register: Register = (on, options) => {
         ? { calls: finished.calls, files: finished.files.length, elapsedMs: (await $.clock.now()) - finished.startedAt }
         : undefined
       await update($, progress, () => null)
+      await recordCache($)
+      await scheduleCacheTick($)
       // 统计先写进记录，摘要还在生成时第二行右侧就已经是这一轮的最终数字
       const record = await read($, recordAtom)
       if (record?.draft) {
@@ -351,7 +433,11 @@ export const register: Register = (on, options) => {
     const turnProgress = isWorking ? await read($, progress) : null
     const isWaiting = !isWorking && record.recap.waiting !== ''
     const stateColor = isWorking ? settings.accentColor : isWaiting ? settings.waitingColor : settings.idleColor
-    const updatedAt = formatTime(record.updatedAt, await $.clock.now(), offsetMinutes)
+    const now = await $.clock.now()
+    const updatedAt = formatTime(record.updatedAt, now, offsetMinutes)
+    // 读 clockNow 是为了让空闲时的定时刷新重画卡片；缓存提示只在轮到你时显示
+    await read($, clockNow)
+    const cache = isWorking ? undefined : cacheHint(await read($, cacheAtom), now, offsetMinutes, record.lang)
     // 工作中显示正在进行的这一轮
     const meta = settings.showMeta ? `${L.turn(turnProgress?.turn ?? record.turn)} · ${updatedAt}` : ''
     const goal = record.draft ? L.goalPending : record.recap.goal
@@ -370,14 +456,23 @@ export const register: Register = (on, options) => {
     // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
     const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt)}` : record.recap.now
 
+    // 右上角时间后面的缓存提示：状态色圆点加暗色文字
+    const cacheMark = cache && (
+      <Box flexDirection="row" flexShrink={0}>
+        <Text color={CACHE_COLORS[cache.tone]}>{'●'}</Text>
+        <Text dimColor>{` ${cache.text}`}</Text>
+      </Box>
+    )
+
     if (await read($, isFolded)) {
-      // 胶囊依次优先显示：工作中这一轮在做什么、等你处理的事、目标；放不下时截断这段文字，右侧的时间、用时和展开按钮保持完整
+      // 胶囊依次优先显示：工作中这一轮在做什么、等你处理的事、目标；放不下时截断这段文字，右侧的时间、用时或缓存和展开按钮保持完整
       const capsuleText = isWorking
         ? nowText
         : isWaiting
           ? `⏳ ${L.waiting}${L.sep}${record.recap.waiting}`
           : `🎯 ${goal}`
-      const capsuleMeta = [settings.showMeta ? updatedAt : '', stats ? formatElapsed(stats.elapsedMs, record.lang) : '']
+      // 右侧：工作中是时间和实时用时，轮到你时是时间和缓存提示
+      const capsuleMeta = [settings.showMeta ? updatedAt : '', isWorking && stats ? formatElapsed(stats.elapsedMs, record.lang) : '']
         .filter(part => part !== '')
         .join(' · ')
       return (
@@ -393,7 +488,10 @@ export const register: Register = (on, options) => {
                   : <Text wrap="truncate-end">{capsuleText}</Text>}
               </Box>
               <Box flexDirection="row" flexShrink={0} gap={1}>
-                {capsuleMeta !== '' && <Text dimColor>{capsuleMeta}</Text>}
+                <Box flexDirection="row" flexShrink={0}>
+                  {capsuleMeta !== '' && <Text dimColor>{cacheMark ? `${capsuleMeta} · ` : capsuleMeta}</Text>}
+                  {cacheMark}
+                </Box>
                 <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
               </Box>
             </Box>
@@ -419,9 +517,10 @@ export const register: Register = (on, options) => {
                 ? <Text dimColor wrap="truncate-end">{`🎯 ${goal}`}</Text>
                 : <Text bold wrap="truncate-end">{`🎯 ${goal}`}</Text>}
             </Box>
-            {meta !== '' && (
-              <Box flexShrink={0}>
-                <Text dimColor>{meta}</Text>
+            {(meta !== '' || cacheMark) && (
+              <Box flexDirection="row" flexShrink={0}>
+                {meta !== '' && <Text dimColor>{cacheMark ? `${meta} · ` : meta}</Text>}
+                {cacheMark}
               </Box>
             )}
           </Box>
