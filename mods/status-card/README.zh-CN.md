@@ -18,7 +18,7 @@
 
 固定三行：
 
-1. **🎯 目标**：整个会话的主线，只在你换了一件事做时才改。右侧是 **第 N 轮 · 更新时间**（当天只显示 `HH:mm`，其他日子 `MMDD HH:mm`，如 `1013 20:06`）。
+1. **🎯 目标**：整个会话的主线，只在你换了一件事做时才改。右侧是 **第 N 轮 · 更新时间**（工作中 N 是正在进行的这一轮；当天只显示 `HH:mm`，其他日子 `MMDD HH:mm`，如 `1013 20:06`）。
 2. **现在**：Claude 工作时显示工作色的圆点和 **本轮：一句话目标**，一轮结束后显示 **✅** 和这一轮做了什么。右侧是 **调用次数 · 改了几个文件 · 用时**：工作中每秒更新，结束后保留这一轮的最终数字，重启后也在。不重复原生界面里逐条跳动的工具状态。
 3. **⏳ 等你**：Claude 需要你处理的事。Claude 工作时（第二行已经说了在做什么）和没有要你处理的事时留空。右侧是 **详情** 和 **折叠** 两个按钮。
 
@@ -43,7 +43,7 @@ claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-第一轮结束后卡片出现。在一轮进行中途装上的话，这一轮的卡片右侧没有调用次数和用时，下一轮开始显示。
+第一轮你发出消息后卡片就出现；第一份摘要出来前，目标行显示「目标会在这一轮结束后总结」。在一轮进行中途装上的话，这一轮的卡片右侧没有调用次数和用时，下一轮开始显示。
 
 **从 where-am-i 或 goal-card 升级：** 这是同一个 mod 的旧名字。先卸载旧的再装 status-card；摘要记录按 plugin 名分开保存，旧记录不会带过来。
 
@@ -86,19 +86,17 @@ claude plugin install status-card@tyler-claude-mods --scope user
 
 这些都是真实的模型请求，会计入你的用量。
 
-**数据存在哪：** Claude Code 为每个 plugin 提供的 `$.store`，即 `~/.claude/plugins/store/` 下本 plugin 的 JSON 文件。每个对话一条记录（最新摘要、滚动总结、轮次、更新时间、语言、上一轮统计、缓存的详情），外加一个折叠偏好。超过 `retentionDays` 没更新的记录在会话启动时清理。
+**数据存在哪：** Claude Code 为每个 plugin 提供的 `$.store`，即 `~/.claude/plugins/store/` 下本 plugin 的 JSON 文件。每个 session 一条记录（最新摘要、滚动总结、轮次、更新时间、语言、上一轮统计、缓存的详情），外加一个折叠偏好。超过 `retentionDays` 没更新的记录在会话启动时清理。
 
-app 重启后续接对话、或 fork 对话时，Claude Code 会换一个新的 session id，但对话内容原样带过去。所以记录不按 session id 存，而是按"工作目录 + 第一条消息"的指纹认出同一个对话。
+记录按 session id 存：续接、压缩上下文都不换 id，卡片原样找回。fork 或右键 Start a side chat 开出来的 session 会换新 id，它的 transcript 开头是从原对话复制来的条目、仍带着原 session 的 id，status-card 据此复制一份原卡片，之后两边各自更新。0.5.x 按"工作目录 + 第一条消息"指纹存的旧记录，只通过当时记下的 session id 对应关系迁移过来。
 
-**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区。没有其他网络请求，不读写 store 以外的文件。
+**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区；当前 session 还没有卡片时，用 `grep` 从它自己的 transcript 里读出 `sessionId`，用来认出 fork 或 side chat 的原 session。没有其他网络请求，除此之外不读写 store 以外的文件。
 
 Hooks：`session.start`、`session.end`、`prompt.submit`、`tool.call`、`turn.complete`、`ui.render`（`AbovePrompt`）。
 
 ## 局限
 
-- 第一轮结束前没有摘要，卡片不显示。
-- fork 出来的对话和原对话指纹相同，会共用同一张卡片，直到其中一个有新的一轮把它覆盖。
-- 续接前如果上下文被压缩过，第一条消息会变成压缩摘要，指纹对不上，卡片要等新的一轮结束后才重新出现。
+- 认 fork 和 side chat 的原 session 要读 transcript：如果 Claude Code 的 transcript 格式变了，它们会从空卡片开始，不会拿错别的会话的卡片。
 - 模型调用失败或返回格式不对时，保留上一份摘要。
 - 轮次是会话里你发出的、带文字的消息数，斜杠命令也会被计入；上下文压缩后只会继续往上加，不会倒退。
 - 只在 Claude Code 的 desktop 和终端里绘制；VS Code 插件和 `claude -p` 里不显示。

@@ -1,6 +1,6 @@
 {
   "name": "status-card",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "输入框上方的会话摘要卡片：目标、现在、下一步、等你处理的事。跨重启保留，回看旧会话也能看到；可展开详情、折叠成胶囊。",
   "author": {
     "name": "tyler4400",

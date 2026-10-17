@@ -19,10 +19,12 @@ export type SessionRecord = {
   updatedAt: number
   detail?: Detail
   stats?: TurnStats
+  /** 第一份摘要出来前的占位卡片：只在内存里，不写进 store */
+  draft?: true
 }
 
-/** 进行中这一轮的进度：一句话目标由模型写，其余在本地统计 */
-export type TurnProgress = { intent: string; calls: number; files: string[]; startedAt: number }
+/** 进行中这一轮的进度：一句话目标由模型写，turn 是这一轮在对话里的序号，其余在本地统计 */
+export type TurnProgress = { intent: string; turn: number; calls: number; files: string[]; startedAt: number }
 
 export type DetailView = { status: 'loading' | 'ready' | 'error'; text: string }
 
@@ -35,6 +37,7 @@ declare module 'claude-code' {
       isExpanded: boolean
       isFolded: boolean
       detail: DetailView | null
+      transcriptPath: string
     }
   }
 }

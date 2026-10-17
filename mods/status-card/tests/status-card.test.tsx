@@ -4,13 +4,23 @@ const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: f
 
 const SUMMARY = '{"goal":"让摘要跨重启保留","now":"写完卡片","waiting":"你确认样式","next":"跑测试","overall":"fork 了 status-card"}'
 
+// 测试里可以切换的 session：id、transcript 里 grep 出的 sessionId 行、模型返回的摘要
+type Ctx = { sessionId: string; transcript: string[]; summary: string }
+
 // 代替 mod 下面的引擎
-function engine(on: any, store: Map<string, unknown>, sessionId = 's1') {
+function engine(on: any, store: Map<string, unknown>, ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY }) {
   const clock = mock.clock(on, { now: Date.UTC(2026, 9, 13, 9, 0) })
+  // 对话随提交的消息和每轮回复增长
+  const messages: { role: string; text: string; toolUses: never[] }[] = []
   on('session.start', (_$: any, e: any) => ({ sessionId: 's1', cwd: e.cwd }))
-  on('session.id', () => ({ value: sessionId }))
+  on('session.id', () => ({ value: ctx.sessionId }))
   on('session.cwd', () => ({ value: '/work' }))
-  on('process.run', () => ({ value: { stdout: '+0800\n', stderr: '', code: 0 } }))
+  on('process.run', (_$: any, e: any) => {
+    const stdout = e.argv[0] === 'grep' ? ctx.transcript.map(id => `"sessionId":"${id}"\n`).join('') : '+0800\n'
+    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('classic.SessionStart', () => ({}))
+  on('session.end', (_$: any, e: any) => ({ sessionId: e.sessionId }))
   on('store.get', (_$: any, e: any) => ({ value: store.get(e.key) }))
   on('store.set', (_$: any, e: any) => {
     store.set(e.key, e.value)
@@ -21,13 +31,19 @@ function engine(on: any, store: Map<string, unknown>, sessionId = 's1') {
     store.delete(e.key)
     return { value: undefined }
   })
-  on('prompt.submit', () => ({ text: '' }))
+  on('prompt.submit', (_$: any, e: any) => {
+    messages.push({ role: 'user', text: e.text, toolUses: [] })
+    return { text: e.text }
+  })
   on('tool.call', () => ({ result: {}, text: 'ok' }))
-  on('turn.complete', () => ({ text: '' }))
+  on('turn.complete', (_$: any, e: any) => {
+    messages.push({ role: 'assistant', text: e.answer, toolUses: [] })
+    return { text: '' }
+  })
   on('model.complete', (_$: any, e: any) => ({
-    value: { isAnswered: true, text: e.maxTokens === 150 ? '把详情上限改成 180 字' : SUMMARY, usage: { input_tokens: 1, output_tokens: 1 } },
+    value: { isAnswered: true, text: e.maxTokens === 150 ? '把详情上限改成 180 字' : ctx.summary, usage: { input_tokens: 1, output_tokens: 1 } },
   }))
-  on('session.messages', () => ({ value: [{ role: 'user', text: '帮我把摘要做成卡片', toolUses: [] }, { role: 'assistant', text: '好', toolUses: [] }] }))
+  on('session.messages', () => ({ value: [...messages] }))
   on('ui.render', ($: any, e: any) => {
     const { Text } = $.ui.resolve(e)
     return Text({ children: 'band below' })
@@ -52,7 +68,7 @@ describe('status-card', () => {
     await $.prompt.submit({ text: '<task-notification>\nBackground agent finished the review</task-notification>' } as any)
     await $.turn.complete({ reason: 'answer', answer: 'noted', durationMs: 1 } as any)
     await clock.settle()
-    const convKey = [...store.keys()].find(k => k.startsWith('conv:'))!
+    const convKey = 'rec:s1'
     expect((store.get(convKey) as any).lang).toBe('zh')
 
     await $.prompt.submit({ text: 'Please rename the mod to status-card' } as any)
@@ -75,9 +91,8 @@ describe('status-card', () => {
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
     await ui.unmount()
 
-    const convKey = [...store.keys()].find(k => k.startsWith('conv:'))!
-    expect((store.get('id:s1') as any).conv).toBe(convKey)
-    const saved = store.get(convKey) as any
+    expect([...store.keys()].filter(k => !k.startsWith('pref:'))).toEqual(['rec:s1'])
+    const saved = store.get('rec:s1') as any
     expect(saved.recap.goal).toBe('让摘要跨重启保留')
     expect(saved.overall).toBe('fork 了 status-card')
     expect(saved.lang).toBe('zh')
@@ -134,7 +149,7 @@ describe('status-card', () => {
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     await ui.press({ key: 'detail' })
     await clock.settle()
-    const saved = store.get([...store.keys()].find(k => k.startsWith('conv:'))!) as any
+    const saved = store.get('rec:s1') as any
     expect(saved.detail.turn).toBe(1)
     expect(saved.detail.kind).toBe('mainline')
     await ui.unmount()
@@ -153,6 +168,8 @@ describe('status-card', () => {
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
     expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
+    // 轮次是正在进行的这一轮
+    expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
     await ui.press({ key: 'fold' })
@@ -166,29 +183,111 @@ describe('status-card', () => {
     await clock.settle()
     const idle = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await idle.find({ type: 'Text', text: /本轮/ })).toBeUndefined()
+    expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:01$/ })).toBeDefined()
     // 轮到你时保留这一轮的最终统计，并写进 store
     expect(await idle.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     await idle.unmount()
-    const saved = store.get([...store.keys()].find(k => k.startsWith('conv:'))!) as any
+    const saved = store.get('rec:s1') as any
     expect(saved.stats).toEqual({ calls: 2, files: 1, elapsedMs: 92_000 })
   })
 
-  test('续接到新的 session id 后按对话内容找回卡片', async ($, on) => {
+  test('第一轮工作中就画出占位卡片，摘要出来后换成正式卡片', async ($, on) => {
     const store = new Map<string, unknown>()
-    const clock = engine(on, store, 's1')
-    await oneTurn($, clock)
-    const before = new Map(store)
+    const clock = engine(on, store)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+    await clock.settle()
 
-    // 换一个 session id、同样的对话内容，模拟 app 重启后续接
-    const resumed = new Map(before)
-    resumed.delete('id:s1')
-    store.clear()
-    for (const [k, v] of resumed) store.set(k, v)
+    const working = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
+    expect(await working.find({ type: 'Text', text: /^🎯 目标会在这一轮结束后总结$/ })).toBeDefined()
+    expect(await working.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
+    expect(await working.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    await working.unmount()
+    // 占位卡片不写进 store
+    expect(store.has('rec:s1')).toBe(false)
+
+    // 这一轮结束、摘要还没出来时，第二行是这一轮的意图
+    await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+    const waiting = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await waiting.find({ type: 'Text', text: /^✅ 把详情上限改成 180 字$/ })).toBeDefined()
+    await waiting.unmount()
+
+    await clock.settle()
+    const done = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await done.find({ type: 'Text', text: /^🎯 让摘要跨重启保留$/ })).toBeDefined()
+    expect(await done.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    await done.unmount()
+  })
+
+  test('同一目录、开场白相同的两个新 session 不共用卡片', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY }
+    const clock = engine(on, store, ctx)
+    await oneTurn($, clock)
+    const first = structuredClone(store.get('rec:s1'))
+
+    // 另一个新 session：新进程里没有上一个 session 的卡片，对话内容和 s1 一样
+    await $.session.end({ reason: 'clear', sessionId: ctx.sessionId } as any)
+    ctx.sessionId = 's2'
+    ctx.summary = '{"goal":"另一件事","now":"刚开始","waiting":"","next":"","overall":"s2"}'
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await clock.settle()
+    const before = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await before.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeUndefined()
+    await before.unmount()
+
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+    await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+    await clock.settle()
+    expect((store.get('rec:s2') as any).recap.goal).toBe('另一件事')
+    expect(store.get('rec:s1')).toEqual(first)
+  })
+
+  test('fork 出来的 session 复制一份原卡片，之后各自更新', async ($, on) => {
+    const parent = '11111111-1111-4111-8111-111111111111'
+    const child = '22222222-2222-4222-8222-222222222222'
+    const store = new Map<string, unknown>()
+    const ctx: Ctx = { sessionId: parent, transcript: [], summary: SUMMARY }
+    const clock = engine(on, store, ctx)
+    await oneTurn($, clock)
+
+    // fork：新 id，transcript 开头是从原 session 复制来的条目
+    await $.session.end({ reason: 'clear', sessionId: ctx.sessionId } as any)
+    ctx.sessionId = child
+    ctx.transcript = [parent, parent, parent]
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    // 别的 session 的 transcript 不读
+    await $.classic.SessionStart({ source: 'fork', transcript_path: `/t/${parent}.jsonl` } as any)
+    expect(store.has(`rec:${child}`)).toBe(false)
+    await $.classic.SessionStart({ source: 'fork', transcript_path: `/t/${child}.jsonl` } as any)
+    await clock.settle()
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^🎯 让摘要跨重启保留$/ })).toBeDefined()
+    await ui.unmount()
+    expect((store.get(`rec:${child}`) as any).recap.goal).toBe('让摘要跨重启保留')
+
+    ctx.transcript = [parent, parent, child]
+    ctx.summary = '{"goal":"分叉后的目标","now":"改了别的","waiting":"","next":"","overall":"fork"}'
+    await $.prompt.submit({ text: '换个方向试试' } as any)
+    await $.turn.complete({ reason: 'answer', answer: '好', durationMs: 1 } as any)
+    await clock.settle()
+    expect((store.get(`rec:${child}`) as any).recap.goal).toBe('分叉后的目标')
+    expect((store.get(`rec:${parent}`) as any).recap.goal).toBe('让摘要跨重启保留')
+  })
+
+  test('0.5.x 的 conv: 记录按 id: 映射迁移到 rec:', async ($, on) => {
+    const record = { recap: { goal: '旧版记录', now: '做到一半', waiting: '', next: '' }, overall: '', turn: 3, lang: 'zh', updatedAt: Date.UTC(2026, 9, 13, 8, 0) }
+    const store = new Map<string, unknown>([
+      ['conv:abc', record],
+      ['id:s1', { conv: 'conv:abc', updatedAt: record.updatedAt }],
+    ])
+    const clock = engine(on, store)
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
     await clock.settle()
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^🎯 旧版记录$/ })).toBeDefined()
     await ui.unmount()
+    expect(store.get('rec:s1')).toEqual(record)
   })
 })
