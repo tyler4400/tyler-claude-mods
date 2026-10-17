@@ -77,7 +77,10 @@ describe('summaryRequest', () => {
       answer: '好'.repeat(5000),
       messages: [{ role: 'user', text: '做一组 mods 并发布' }, { role: 'user', text: '开始' }],
     })
-    expect(req.prompt).toContain('"goal":"g"')
+    expect(req.prompt).not.toContain('"goal"')
+    expect(req.prompt).toContain('Previous goal (may be outdated, re-judge it against the person\'s latest messages): g')
+    expect(req.prompt).toContain('"next":"x"')
+    expect(req.system).toContain('latest 2 messages')
     expect(req.prompt).toContain('之前的总结')
     expect(req.prompt).toContain('省略 2000 字')
     expect(req.system).toContain('简体中文')

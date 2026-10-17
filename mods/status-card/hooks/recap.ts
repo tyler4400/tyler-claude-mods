@@ -134,7 +134,7 @@ export function userTrail(messages: readonly Message[]): string {
 const MAINLINE_RULE = [
   'The mainline is what the whole session is working towards, judged from all of the person\'s messages, for example "build and publish a set of mods".',
   'A bug, question or detour that comes up on the way is a sub-problem of the mainline, not a new mainline, even if it takes several turns.',
-  'The mainline changes only when the person moves on to a different piece of work for good.',
+  'The mainline changes when the person\'s latest 2 messages both point to a different piece of work than the previous goal, or when they say outright that they are moving on.',
 ].join(' ')
 
 export function summaryRequest(input: {
@@ -151,15 +151,18 @@ export function summaryRequest(input: {
     'Reply with JSON only: {"goal","now","waiting","next","overall"}.',
     `"goal", "waiting", "next": one sentence each, at most ${FIELD_MAX} characters. "now": one sentence, at most ${NOW_MAX} characters.`,
     MAINLINE_RULE,
-    '"goal": the mainline. Keep the previous goal unless the mainline changed; never replace it with the current sub-problem.',
+    '"goal": the mainline. The previous goal is only a hint and may be outdated: check it against the person\'s latest messages. Replace it when the mainline changed, but not for a single sub-problem or detour.',
     '"now": what was just done. "waiting": what the assistant is waiting on from the person, or "". "next": the next step.',
     `"overall": a running summary of the whole session, at most ${OVERALL_MAX} characters, in this order: the mainline and why; milestones reached; the current sub-problem, if any; to-dos agreed but not done yet.`,
     'Update the previous overall summary with this turn. Keep the mainline and open to-dos until they are done; shorten finished sub-problems to their outcome; drop details that no longer matter.',
     'Text marked as omitted was cut for length on purpose: summarize from what is shown and do not treat the reply as incomplete.',
     LANG_RULE[lang],
   ].join('\n')
+  // goal 单独标注为可能过期，放在 JSON 里模型会当成既定事实原样抄回
+  const { goal: previousGoal, ...previousRest } = previous?.recap ?? { goal: '' }
   const prompt = [
-    `Previous recap: ${previous ? JSON.stringify(previous.recap) : 'none'}`,
+    `Previous recap: ${previous ? JSON.stringify(previousRest) : 'none'}`,
+    `Previous goal (may be outdated, re-judge it against the person's latest messages): ${previousGoal || 'none'}`,
     `Previous overall summary: ${previous?.overall || 'none'}`,
     `<all_messages_from_the_person>\n${userTrail(input.messages)}\n</all_messages_from_the_person>`,
     `The person's latest message:\n${headTail(input.prompt, 1000, 500)}`,
