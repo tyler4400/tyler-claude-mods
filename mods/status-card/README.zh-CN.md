@@ -101,6 +101,7 @@ Hooks：`session.start`、`classic.SessionStart`、`classic.UserPromptSubmit`、
 - 认 fork 和 side chat 的原 session 要读 transcript：如果 Claude Code 的 transcript 格式变了，它们会从空卡片开始，不会拿错别的会话的卡片。
 - 缓存时长从 transcript 的 `usage.cache_creation` 读：如果 Claude Code 的 transcript 格式变了，缓存提示不再显示，不会显示错的时间。剩余时间是按最后一次请求推算的，不是向 API 查询的结果；在别处（如另一个进程）续接同一个会话发了请求时，这里不会知道。
 - 模型调用失败或返回格式不对时，保留上一份摘要。
+- 带问题的“下一步”框（Claude 结束回合时附的选项）会盖住 `AbovePrompt` 位置的 mod 卡片，卡片会被遮住。使用时尽量不要让 agent 弹出“下一步”框；如果要让 agent 停下来等你，直接在回复里问，不要附带这个框。
 - 轮次是会话里你发出的、带文字的消息数，斜杠命令也会被计入；上下文压缩后只会继续往上加，不会倒退。
 - 只在 Claude Code 的 desktop 和终端里绘制；VS Code 插件和 `claude -p` 里不显示。
 - 在 Claude Code 2.1.294 / 2.1.295 / 2.1.299 上用 `claude plugin validate` 和 `claude plugin test` 验证过。

@@ -101,6 +101,7 @@ Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `cla
 - Finding the original session of a fork or side chat reads its transcript. If Claude Code changes the transcript format, such a session starts with an empty card rather than picking up another conversation's.
 - The cache lifetime is read from the transcript's `usage.cache_creation`. If Claude Code changes the transcript format, the cache hint stops showing rather than showing a wrong time. The time left is worked out from the last request, not asked of the API; requests sent to the same conversation from elsewhere (another process resuming it) are not seen here.
 - If a model call fails or returns something malformed, the previous recap stays.
+- A "next step" box with a question (the options an agent attaches when it ends a turn) covers the mod card drawn above the prompt (`AbovePrompt`), hiding the card. Avoid letting the agent show that box; if you want it to stop and wait for you, ask in the reply itself instead of attaching the box.
 - The turn number counts your messages with text in the session, slash commands included. After compaction it keeps counting up and never goes back.
 - Drawn only in Claude Code's desktop app and terminal; not in the VS Code extension or `claude -p`.
 - Checked with `claude plugin validate` and `claude plugin test` on Claude Code 2.1.294 / 2.1.295 / 2.1.299.
