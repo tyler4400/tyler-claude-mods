@@ -25,7 +25,9 @@ import {
 type Engine = EngineInterface
 
 // store 是 ~/.claude/plugins/store/ 下本 plugin 的 JSON 文件
-// conv:<指纹> 是一个对话的记录；id:<session id> 记住这个 session 属于哪个对话；session:<id> 是 0.3.0 之前的旧格式
+// rec:<session id> 是一个 session 的记录。以下是旧格式，只读不写：
+// conv:<指纹> 和 id:<session id>（指向它属于的 conv:）是 0.3.0–0.5.x 的，session:<id> 是 0.3.0 之前的
+const REC_PREFIX = 'rec:'
 const CONV_PREFIX = 'conv:'
 const ID_PREFIX = 'id:'
 const LEGACY_PREFIX = 'session:'
@@ -42,6 +44,8 @@ const clockNow = atom({ plugin: 'status-card', key: 'clockNow' } as const, 0)
 const isExpanded = atom({ plugin: 'status-card', key: 'isExpanded' } as const, false)
 const isFolded = atom({ plugin: 'status-card', key: 'isFolded' } as const, false)
 const detailView = atom({ plugin: 'status-card', key: 'detail' } as const, null as DetailView | null)
+// classic.SessionStart 给的 transcript 路径，fork 时靠它找到原 session
+const transcriptPath = atom({ plugin: 'status-card', key: 'transcriptPath' } as const, '')
 
 type Settings = {
   language: unknown
@@ -71,51 +75,59 @@ function settingsFrom(options: PluginOptions): Settings {
   }
 }
 
-async function digest(text: string): Promise<string> {
-  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))
-  return Array.from(bytes.slice(0, 12), b => b.toString(16).padStart(2, '0')).join('')
+// 某个 session 自己的记录；旧格式的 conv: 记录只按这个 session 的 id: 映射认领，不按对话内容猜
+async function recordOf($: Engine, id: string): Promise<SessionRecord | undefined> {
+  const own = (await $.store.get(REC_PREFIX + id)) as SessionRecord | undefined
+  if (own) return own
+  const mapped = (await $.store.get(ID_PREFIX + id)) as { conv?: string } | undefined
+  const migrated = mapped?.conv ? ((await $.store.get(mapped.conv)) as SessionRecord | undefined) : undefined
+  return migrated ?? ((await $.store.get(LEGACY_PREFIX + id)) as SessionRecord | undefined)
 }
 
-// 续接或 fork 时 Claude Code 会换一个新的 session id，但对话内容原样带过去：
-// 用工作目录和第一条消息认出同一个对话，算出来后记在 id:<session id> 下，压缩上下文后也能找到
-async function conversationKey($: Engine): Promise<string | undefined> {
-  if (convKey) return convKey
-  const mapped = (await $.store.get(ID_PREFIX + (await $.session.id()))) as { conv?: string } | undefined
-  if (mapped?.conv) return (convKey = mapped.conv)
-  const first = (await $.session.messages()).find(m => m.role === 'user' && m.text.trim() !== '')
-  if (!first) return undefined
-  convKey = CONV_PREFIX + (await digest(`${await $.session.cwd()}\n${first.text.slice(0, 4000)}`))
-  return convKey
-}
-
-async function loadRecord($: Engine): Promise<SessionRecord | undefined> {
-  const key = await conversationKey($)
-  const saved = key ? ((await $.store.get(key)) as SessionRecord | undefined) : undefined
-  return saved ?? ((await $.store.get(LEGACY_PREFIX + (await $.session.id()))) as SessionRecord | undefined)
+// fork 出来的 transcript 开头是从原对话复制来的条目，仍带着原 session 的 id；
+// 自己的条目之前出现的其他 id 就是祖先，按从近到远返回
+async function ancestorIds($: Engine, id: string): Promise<string[]> {
+  const path = await read($, transcriptPath)
+  if (!path.endsWith(`/${id}.jsonl`)) return []
+  const { stdout } = await $.process.run(['grep', '-o', '-E', '"sessionId":"[0-9a-f-]{36}"', path])
+  const ids = stdout.split('\n').filter(line => line !== '').map(line => line.slice('"sessionId":"'.length, -1))
+  const ownAt = ids.indexOf(id)
+  const copied = ownAt === -1 ? ids : ids.slice(0, ownAt)
+  return [...new Set(copied.reverse())].filter(other => other !== id)
 }
 
 async function saveRecord($: Engine, record: SessionRecord): Promise<void> {
   await update($, recordAtom, () => record)
-  const id = await $.session.id()
-  const key = (await conversationKey($)) ?? LEGACY_PREFIX + id
-  await $.store.set(key, record)
-  if (key.startsWith(CONV_PREFIX)) await $.store.set(ID_PREFIX + id, { conv: key, updatedAt: record.updatedAt })
+  await $.store.set(REC_PREFIX + (await $.session.id()), record)
 }
 
 async function pruneOldRecords($: Engine, retentionDays: number): Promise<void> {
   const now = await $.clock.now()
   for (const key of await $.store.keys()) {
-    if (![CONV_PREFIX, ID_PREFIX, LEGACY_PREFIX].some(prefix => key.startsWith(prefix))) continue
+    if (![REC_PREFIX, CONV_PREFIX, ID_PREFIX, LEGACY_PREFIX].some(prefix => key.startsWith(prefix))) continue
     const entry = (await $.store.get(key)) as { updatedAt?: number } | undefined
     if (!entry || now - (entry.updatedAt ?? 0) > retentionDays * DAY_MS) await $.store.delete(key)
   }
 }
 
+// 先找这个 session 自己的记录；没有时，fork 出来的 session 复制一份原 session 的，之后各自更新
 async function restoreRecord($: Engine): Promise<void> {
-  const saved = await loadRecord($)
+  const id = await $.session.id()
+  let saved = await recordOf($, id)
+  if (!saved) {
+    try {
+      for (const ancestor of await ancestorIds($, id)) {
+        saved = await recordOf($, ancestor)
+        if (saved) break
+      }
+    } catch {
+      // 读不到 transcript 时当作新会话
+    }
+  }
   if (!saved) return
   lang = saved.lang
   await update($, recordAtom, () => saved)
+  if (!(await $.store.get(REC_PREFIX + id))) await $.store.set(REC_PREFIX + id, saved)
 }
 
 async function setFolded($: Engine, value: boolean): Promise<void> {
@@ -134,11 +146,16 @@ let lang: Lang = 'zh'
 // 本机时区相对 UTC 的分钟数：mod 运行环境的时区不一定是本机的
 let offsetMinutes = 0
 let ticker: { cancel: () => void } | undefined
-let convKey: string | undefined
+
+// 占位卡片还没有摘要内容，不能当作上一份摘要
+async function lastRecap($: Engine): Promise<SessionRecord | null> {
+  const record = await read($, recordAtom)
+  return record?.draft ? null : record
+}
 
 async function writeIntent($: Engine, text: string): Promise<void> {
   try {
-    const request = intentRequest({ lang, previous: await read($, recordAtom), prompt: text })
+    const request = intentRequest({ lang, previous: await lastRecap($), prompt: text })
     const result = await $.model.complete({ model: settings.model, ...request })
     if (!result.isAnswered) return
     const intent = parseIntent(result.text)
@@ -153,8 +170,8 @@ async function tick($: Engine): Promise<void> {
   await update($, clockNow, () => now)
 }
 
-async function summarize($: Engine, answer: string, stats: TurnStats | undefined): Promise<void> {
-  const previous = await read($, recordAtom)
+async function summarize($: Engine, answer: string, stats: TurnStats | undefined, turn: number | undefined): Promise<void> {
+  const previous = await lastRecap($)
   const messages = await $.session.messages()
   const request = summaryRequest({ lang, previous, prompt, tools: log, answer, messages })
   const result = await $.model.complete({ model: settings.model, ...request })
@@ -165,7 +182,7 @@ async function summarize($: Engine, answer: string, stats: TurnStats | undefined
     recap: parsed.recap,
     overall: parsed.overall || previous?.overall || '',
     // 上下文压缩后重启，session.messages() 只剩压缩后的消息，轮次不能因此倒退
-    turn: Math.max(countTurns(messages), (previous?.turn ?? 0) + 1),
+    turn: Math.max(turn ?? 0, countTurns(messages), (previous?.turn ?? 0) + 1),
     lang,
     updatedAt: await $.clock.now(),
     detail: previous?.detail,
@@ -177,7 +194,7 @@ async function summarize($: Engine, answer: string, stats: TurnStats | undefined
 }
 
 async function loadDetail($: Engine): Promise<void> {
-  const record = await read($, recordAtom)
+  const record = await lastRecap($)
   if (!record) {
     await update($, detailView, () => ({ status: 'error', text: labels(lang).noRecap }))
     return
@@ -210,9 +227,9 @@ async function setExpanded($: Engine, value: boolean): Promise<void> {
   }
 }
 
-async function summarizeQuietly($: Engine, answer: string, stats: TurnStats | undefined): Promise<void> {
+async function summarizeQuietly($: Engine, answer: string, stats: TurnStats | undefined, turn: number | undefined): Promise<void> {
   try {
-    await summarize($, answer, stats)
+    await summarize($, answer, stats, turn)
   } catch {
     // 摘要是附加功能：失败就保留上一份
   }
@@ -229,19 +246,26 @@ export const register: Register = (on, options) => {
       offsetMinutes = 0
     }
     await pruneOldRecords($, settings.retentionDays)
-    convKey = undefined
     await restoreRecord($)
     const folded = await $.store.get(FOLDED_KEY)
     if (typeof folded === 'boolean') await update($, isFolded, () => folded)
     return result
   })
 
-  // /clear 之后是新会话，旧卡片不再适用
+  // 只为拿 transcript 路径：fork 出来的 session 启动时还没有自己的记录，读到路径后再找一次
+  on('classic.SessionStart', async ($, e, next) => {
+    const result = await next(e)
+    await update($, transcriptPath, () => e.transcript_path)
+    if (!(await read($, recordAtom))) await restoreRecord($)
+    return result
+  })
+
+  // /clear 或 /resume 后进程换到另一个 session，旧卡片和旧 transcript 不再适用；新 session 的卡片由 classic.SessionStart 找回
   on('session.end', async ($, e, next) => {
     const result = await next(e)
-    if (e.reason === 'clear') {
-      convKey = undefined
+    if (e.reason === 'clear' || e.reason === 'resume') {
       await update($, recordAtom, () => null)
+      await update($, transcriptPath, () => '')
       await update($, detailView, () => null)
       await update($, isExpanded, () => false)
     }
@@ -251,6 +275,9 @@ export const register: Register = (on, options) => {
   on('prompt.submit', async ($, e, next) => {
     // 续接的会话在启动时可能还没载入对话内容，这里再找一次
     if (!(await read($, recordAtom))) await restoreRecord($)
+    const record = await read($, recordAtom)
+    // 第几轮按对话里你发过的消息数，这一条还没进对话所以加一；压缩上下文后消息变少，不能比上一轮小
+    const turn = Math.max(countTurns(await $.session.messages()) + 1, (record?.turn ?? 0) + 1)
     prompt = e.text
     log = []
     // 不是你打的字、或太短（如"好""开始"）不足以判断语言时，沿用上一次的
@@ -260,7 +287,12 @@ export const register: Register = (on, options) => {
     }
     const startedAt = await $.clock.now()
     await update($, clockNow, () => startedAt)
-    await update($, progress, () => ({ intent: '', calls: 0, files: [], startedAt }))
+    await update($, progress, () => ({ intent: '', turn, calls: 0, files: [], startedAt }))
+    // 第一份摘要出来前先画占位卡片，第一轮也有卡片
+    if (!record || record.draft) {
+      const recap = { goal: '', now: '', waiting: '', next: '' }
+      await update($, recordAtom, () => ({ recap, overall: '', turn, lang, updatedAt: startedAt, draft: true }))
+    }
     ticker?.cancel()
     ticker = $.clock.every(1000, () => void tick($))
     const text = e.text
@@ -293,10 +325,17 @@ export const register: Register = (on, options) => {
       await update($, progress, () => null)
       // 统计先写进记录，摘要还在生成时第二行右侧就已经是这一轮的最终数字
       const record = await read($, recordAtom)
-      if (record && stats) await saveRecord($, { ...record, stats })
+      if (record?.draft) {
+        // 摘要出来前，占位卡片的第二行先写这一轮的意图
+        const now = finished?.intent || clip(prompt)
+        await update($, recordAtom, () => ({ ...record, recap: { ...record.recap, now }, stats: stats ?? record.stats }))
+      } else if (record && stats) {
+        await saveRecord($, { ...record, stats })
+      }
       const answer = e.answer
+      const turn = finished?.turn
       // 放到定时器里跑，不拖住这一轮的收尾
-      $.clock.after(0, () => void summarizeQuietly($, answer, stats))
+      $.clock.after(0, () => void summarizeQuietly($, answer, stats, turn))
     }
     return result
   })
@@ -313,7 +352,9 @@ export const register: Register = (on, options) => {
     const isWaiting = !isWorking && record.recap.waiting !== ''
     const stateColor = isWorking ? settings.accentColor : isWaiting ? settings.waitingColor : settings.idleColor
     const updatedAt = formatTime(record.updatedAt, await $.clock.now(), offsetMinutes)
-    const meta = settings.showMeta ? `${L.turn(record.turn)} · ${updatedAt}` : ''
+    // 工作中显示正在进行的这一轮
+    const meta = settings.showMeta ? `${L.turn(turnProgress?.turn ?? record.turn)} · ${updatedAt}` : ''
+    const goal = record.draft ? L.goalPending : record.recap.goal
 
     const border = settings.borderStyle === 'none' ? {} : { borderStyle: settings.borderStyle, borderColor: stateColor }
 
@@ -335,7 +376,7 @@ export const register: Register = (on, options) => {
         ? nowText
         : isWaiting
           ? `⏳ ${L.waiting}${L.sep}${record.recap.waiting}`
-          : `🎯 ${record.recap.goal}`
+          : `🎯 ${goal}`
       const capsuleMeta = [settings.showMeta ? updatedAt : '', stats ? formatElapsed(stats.elapsedMs, record.lang) : '']
         .filter(part => part !== '')
         .join(' · ')
@@ -374,7 +415,9 @@ export const register: Register = (on, options) => {
         <Box flexDirection="column" paddingX={1} rowGap={settings.density === 'compact' ? 0 : 1} {...border}>
           <Box flexDirection="row" justifyContent="space-between" gap={2}>
             <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
-              <Text bold wrap="truncate-end">{`🎯 ${record.recap.goal}`}</Text>
+              {record.draft
+                ? <Text dimColor wrap="truncate-end">{`🎯 ${goal}`}</Text>
+                : <Text bold wrap="truncate-end">{`🎯 ${goal}`}</Text>}
             </Box>
             {meta !== '' && (
               <Box flexShrink={0}>

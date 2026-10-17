@@ -18,7 +18,7 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 
 Always three lines:
 
-1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (`HH:mm` for today, `MMDD HH:mm` for other days, e.g. `1013 20:06`).
+1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress; `HH:mm` for today, `MMDD HH:mm` for other days, e.g. `1013 20:06`).
 2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase; after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
@@ -43,7 +43,7 @@ claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-The card appears after the first turn ends. If you install it in the middle of a turn, that turn's card has no call count or elapsed time on the right; they show from the next turn.
+The card appears as soon as you send your first message; until the first recap is ready, the goal line reads "The goal is summarized when this turn ends". If you install it in the middle of a turn, that turn's card has no call count or elapsed time on the right; they show from the next turn.
 
 **Upgrading from where-am-i or goal-card:** these are earlier names of this mod. Uninstall the old one, then install status-card. Recaps are stored per plugin name, so old recaps do not carry over.
 
@@ -86,19 +86,17 @@ Long text keeps its head and tail with a note saying how much was cut, and the m
 
 These are real model requests and count toward your usage.
 
-**Where the data lives:** in `$.store`, which Claude Code gives each plugin as a JSON file under `~/.claude/plugins/store/`. There is one record per conversation (latest recap, running summary, turn, update time, language, last turn's stats, cached details) plus the fold preference. Records not updated for `retentionDays` are removed when a session starts.
+**Where the data lives:** in `$.store`, which Claude Code gives each plugin as a JSON file under `~/.claude/plugins/store/`. There is one record per session (latest recap, running summary, turn, update time, language, last turn's stats, cached details) plus the fold preference. Records not updated for `retentionDays` are removed when a session starts.
 
-When you resume a conversation after restarting the app, or fork one, Claude Code gives it a new session id but carries the conversation over unchanged. So records are not keyed by session id: the same conversation is recognised by a fingerprint of the working directory and its first message.
+Records are keyed by session id: resuming and compaction keep the id, so the card comes back as it was. A session opened by forking, or by right-clicking and choosing Start a side chat, gets a new id; its transcript starts with entries copied from the original, which still carry the original session's id, so status-card copies the original's card and the two update separately from then on. Records 0.5.x stored under a fingerprint of the working directory and first message are migrated only through the session-id mapping recorded at the time.
 
-**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone. It makes no other network requests and reads or writes no files outside its store.
+**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat. It makes no other network requests and otherwise reads or writes no files outside its store.
 
 Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.complete`, `ui.render` (`AbovePrompt`).
 
 ## Limitations
 
-- No card before the first turn ends.
-- A forked conversation has the same fingerprint as the original, so the two share one card until a new turn in either overwrites it.
-- If the context was compacted before you resume, the first message becomes the compaction summary, the fingerprint no longer matches, and the card comes back only after the next turn ends.
+- Finding the original session of a fork or side chat reads its transcript. If Claude Code changes the transcript format, such a session starts with an empty card rather than picking up another conversation's.
 - If a model call fails or returns something malformed, the previous recap stays.
 - The turn number counts your messages with text in the session, slash commands included. After compaction it keeps counting up and never goes back.
 - Drawn only in Claude Code's desktop app and terminal; not in the VS Code extension or `claude -p`.

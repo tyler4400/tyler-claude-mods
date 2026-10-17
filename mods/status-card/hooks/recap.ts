@@ -21,6 +21,7 @@ const LABELS = {
     loading: '正在生成详情…',
     failed: '详情生成失败，稍后再试。',
     noRecap: '还没有摘要，等这一轮结束后再试。',
+    goalPending: '目标会在这一轮结束后总结',
   },
   en: {
     turn: (n: number) => `turn ${n}`,
@@ -36,6 +37,7 @@ const LABELS = {
     loading: 'Writing the details…',
     failed: 'Could not write the details. Try again later.',
     noRecap: 'No recap yet. Try again after this turn ends.',
+    goalPending: 'The goal is summarized when this turn ends',
   },
 }
 
