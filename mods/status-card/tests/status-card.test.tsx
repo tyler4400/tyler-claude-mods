@@ -26,6 +26,7 @@ function engine(on: any, store: Map<string, unknown>, ctx: Ctx = { sessionId: 's
   })
   on('classic.SessionStart', () => ({}))
   on('classic.PostModelSwitch', () => ({}))
+  on('classic.UserPromptSubmit', () => ({}))
   on('turn.step', async function* (_$: any, e: any) {
     return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
   })
@@ -359,6 +360,23 @@ describe('status-card', () => {
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await view.find({ type: 'Text', text: /缓存/ })).toBeUndefined()
     await view.unmount()
+  })
+
+  test('热重载后没有 classic.SessionStart，从发消息时的 transcript 路径读缓存时长', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const line = JSON.stringify({ type: 'assistant', message: { usage: { cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 900 } } } })
+    const clock = engine(on, store, { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: line })
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.UserPromptSubmit({ prompt: '帮我把摘要做成卡片，样式选 E', transcript_path: '/t/s1.jsonl' } as any)
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+    for await (const _ of $.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', messageCount: 1 } as any)) {
+      // 只需要跑完这一步
+    }
+    await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+    await clock.settle()
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^ 缓存 60 分$/ })).toBeDefined()
+    await ui.unmount()
   })
 
   test('transcript 里读不到 TTL 时不显示缓存', async ($, on) => {

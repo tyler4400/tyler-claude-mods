@@ -94,7 +94,7 @@ claude plugin install status-card@tyler-claude-mods --scope user
 
 **它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区；当前 session 还没有卡片时，用 `grep` 从它自己的 transcript 里读出 `sessionId`，用来认出 fork 或 side chat 的原 session；每轮结束时用 `grep` 和 `tail` 读出 transcript 里最近几条含 `ephemeral_` 的行，得到这次写入提示缓存用的时长。没有其他网络请求，除此之外不读写 store 以外的文件。
 
-Hooks：`session.start`、`classic.SessionStart`、`classic.PostModelSwitch`、`session.end`、`prompt.submit`、`tool.call`、`turn.step`（只记请求发出的时间）、`turn.complete`、`ui.render`（`AbovePrompt`）。
+Hooks：`session.start`、`classic.SessionStart`、`classic.UserPromptSubmit`、`classic.PostModelSwitch`、`session.end`、`prompt.submit`、`tool.call`、`turn.step`（只记请求发出的时间）、`turn.complete`、`ui.render`（`AbovePrompt`）。
 
 ## 局限
 

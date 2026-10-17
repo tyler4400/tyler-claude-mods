@@ -94,7 +94,7 @@ Records are keyed by session id: resuming and compaction keep the id, so the car
 
 **What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. It makes no other network requests and otherwise reads or writes no files outside its store.
 
-Hooks: `session.start`, `classic.SessionStart`, `classic.PostModelSwitch`, `session.end`, `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
+Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `classic.PostModelSwitch`, `session.end`, `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
 
 ## Limitations
 

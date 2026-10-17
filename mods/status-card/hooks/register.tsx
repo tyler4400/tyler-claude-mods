@@ -49,7 +49,7 @@ const clockNow = atom({ plugin: 'status-card', key: 'clockNow' } as const, 0)
 const isExpanded = atom({ plugin: 'status-card', key: 'isExpanded' } as const, false)
 const isFolded = atom({ plugin: 'status-card', key: 'isFolded' } as const, false)
 const detailView = atom({ plugin: 'status-card', key: 'detail' } as const, null as DetailView | null)
-// classic.SessionStart 给的 transcript 路径，fork 时靠它找到原 session
+// classic.SessionStart 和 classic.UserPromptSubmit 给的 transcript 路径：fork 时靠它找到原 session，也从它读缓存时长
 const transcriptPath = atom({ plugin: 'status-card', key: 'transcriptPath' } as const, '')
 // 不放进 SessionRecord：摘要在后台慢慢生成，写回记录时会盖掉这期间更新的缓存状态
 const cacheAtom = atom({ plugin: 'status-card', key: 'cache' } as const, null as CacheState | null)
@@ -319,6 +319,13 @@ export const register: Register = (on, options) => {
     await update($, transcriptPath, () => e.transcript_path)
     if (!(await read($, recordAtom))) await restoreRecord($)
     if (!(await read($, cacheAtom))) await restoreCache($)
+    return result
+  })
+
+  // 热重载或会话中途装上时不会再有 classic.SessionStart，每轮发消息时再记一次 transcript 路径
+  on('classic.UserPromptSubmit', async ($, e, next) => {
+    const result = await next(e)
+    await update($, transcriptPath, () => e.transcript_path)
     return result
   })
 
