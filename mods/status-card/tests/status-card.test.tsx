@@ -203,6 +203,35 @@ describe('status-card', () => {
     expect(saved.stats).toEqual({ calls: 2, files: 1, elapsedMs: 92_000 })
   })
 
+  test('一句话目标还没回来时，工作中的第二行显示 thinking ...，回来后换成目标', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const clock = engine(on, store)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+
+    const working = { plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any
+    const pending = await $.ui.mount(working)
+    expect(await pending.find({ type: 'Text', text: /^● 本轮：thinking \.\.\.$/ })).toBeDefined()
+    expect(await pending.find({ type: 'Text', text: /帮我把摘要做成卡片/ })).toBeUndefined()
+    await pending.unmount()
+
+    await clock.settle()
+    const answered = await $.ui.mount(working)
+    expect(await answered.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
+    await answered.unmount()
+  })
+
+  test('英文会话一句话目标还没回来时显示 This turn: thinking ...', async ($, on) => {
+    const store = new Map<string, unknown>()
+    engine(on, store)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.prompt.submit({ text: 'Please rename the mod to status-card' } as any)
+
+    const pending = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
+    expect(await pending.find({ type: 'Text', text: /^● This turn: thinking \.\.\.$/ })).toBeDefined()
+    await pending.unmount()
+  })
+
   test('第一轮工作中就画出占位卡片，摘要出来后换成正式卡片', async ($, on) => {
     const store = new Map<string, unknown>()
     const clock = engine(on, store)
