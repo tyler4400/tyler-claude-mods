@@ -6,7 +6,7 @@
 <text x="833.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">第 14 轮 · 16:20</text>
 <text x="854.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end"> · </text>
 <text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ 已把限流器接进网关并补上测试</text>
-<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">18 次调用 · 改 3 个文件 · 2分41秒</text>
+<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">2分41秒</text>
 <text x="36" y="120" fill="#d4943a" font-size="14" text-anchor="start">⏳ 等你：默认限额定为每分钟 60 次还是 120 次</text>
 <text x="924" y="120" fill="#ececea" font-size="14" text-anchor="end">折叠</text>
 <text x="868" y="120" fill="#ececea" font-size="14" text-anchor="end">收起</text>

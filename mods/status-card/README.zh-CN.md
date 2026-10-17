@@ -19,7 +19,7 @@
 固定三行：
 
 1. **🎯 目标**：整个会话的主线，只在你换了一件事做时才改。右侧是 **第 N 轮 · 更新时间**（工作中 N 是正在进行的这一轮，时间是你发出这条消息的时间；时间只在当天显示 `HH:mm`，其他日子不显示，对话里每条回复本来就有日期时间）。轮到你时，时间后面是**缓存提示**，见下方。
-2. **现在**：Claude 工作时显示工作色的圆点和 **本轮：一句话目标**（一句话还没写出来时显示 `thinking ...`），一轮结束后显示 **✅** 和这一轮做了什么。右侧是 **调用次数 · 改了几个文件 · 用时**：工作中每秒更新，结束后保留这一轮的最终数字，重启后也在。不重复原生界面里逐条跳动的工具状态。
+2. **现在**：Claude 工作时显示工作色的圆点和 **本轮：一句话目标**（一句话还没写出来时显示 `thinking ...`），一轮结束后显示 **✅** 和这一轮做了什么。右侧是 **用时**：工作中每秒更新，结束后保留这一轮的最终用时，重启后也在。这一行最多 60 个字符。不重复原生界面里逐条跳动的工具状态。
 3. **⏳ 等你**：Claude 需要你处理的事。Claude 工作时（第二行已经说了在做什么）和没有要你处理的事时留空。右侧是 **详情** 和 **折叠** 两个按钮。
 
 窗口变窄时，右侧的轮次、时间、缓存提示、统计和按钮保持完整，截断的是左侧文字。
@@ -45,7 +45,7 @@ claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-第一轮你发出消息后卡片就出现；第一份摘要出来前，目标行显示「目标会在这一轮结束后总结」。在一轮进行中途装上的话，这一轮的卡片右侧没有调用次数和用时，下一轮开始显示。
+第一轮你发出消息后卡片就出现；第一份摘要出来前，目标行显示「目标会在这一轮结束后总结」。在一轮进行中途装上的话，这一轮的卡片右侧没有用时，下一轮开始显示。
 
 **从 where-am-i 或 goal-card 升级：** 这是同一个 mod 的旧名字。先卸载旧的再装 status-card；摘要记录按 plugin 名分开保存，旧记录不会带过来。
 
@@ -72,7 +72,7 @@ claude plugin install status-card@tyler-claude-mods --scope user
 
 ## 怎么工作的
 
-**每轮两次模型调用。** 你发出消息时，后台调用一次 `haiku`，根据你的消息（开头 1000 + 结尾 500 字）和上一份摘要写出"本轮：…"那一句话，输出上限 80 token。
+**每轮两次模型调用。** 你发出消息时，后台调用一次 `haiku`，根据你的消息（开头 1000 + 结尾 500 字）和上一份摘要写出"本轮：…"那一句话，这句话最多 60 个字符，输出上限 150 token。
 
 主对话每一轮结束后，再调用一次 `haiku` 更新摘要，输入是：
 
@@ -92,7 +92,7 @@ claude plugin install status-card@tyler-claude-mods --scope user
 
 记录按 session id 存：续接、压缩上下文都不换 id，卡片原样找回。fork 或右键 Start a side chat 开出来的 session 会换新 id，它的 transcript 开头是从原对话复制来的条目、仍带着原 session 的 id，status-card 据此复制一份原卡片，之后两边各自更新。0.5.x 按"工作目录 + 第一条消息"指纹存的旧记录，只通过当时记下的 session id 对应关系迁移过来。
 
-**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区；当前 session 还没有卡片时，用 `grep` 从它自己的 transcript 里读出 `sessionId`，用来认出 fork 或 side chat 的原 session；每轮结束时用 `grep` 和 `tail` 读出 transcript 里最近几条含 `ephemeral_` 的行，得到这次写入提示缓存用的时长。没有其他网络请求，除此之外不读写 store 以外的文件。
+**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件（只存进统计，不再显示）；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区；当前 session 还没有卡片时，用 `grep` 从它自己的 transcript 里读出 `sessionId`，用来认出 fork 或 side chat 的原 session；每轮结束时用 `grep` 和 `tail` 读出 transcript 里最近几条含 `ephemeral_` 的行，得到这次写入提示缓存用的时长。没有其他网络请求，除此之外不读写 store 以外的文件。
 
 Hooks：`session.start`、`classic.SessionStart`、`classic.UserPromptSubmit`、`classic.PostModelSwitch`、`session.end`、`prompt.submit`、`tool.call`、`turn.step`（只记请求发出的时间）、`turn.complete`、`ui.render`（`AbovePrompt`）。
 

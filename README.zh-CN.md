@@ -12,7 +12,7 @@
 
 [![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
 
-输入框上方的三行会话卡片：目标、Claude 正在做或刚做完什么、等你处理的事。第二行保留这一轮的调用次数、改动文件数和用时。**详情** 用一段话总结会话主线和接下来该做什么，不进入对话上下文；**折叠** 把卡片收成一行胶囊。摘要按对话保存，重启后还在。借鉴了 [hamzafer](https://github.com/hamzafer) 的 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 源码。[详细说明 →](mods/status-card/README.zh-CN.md)
+输入框上方的三行会话卡片：目标、Claude 正在做或刚做完什么、等你处理的事。第二行显示这一轮的用时。**详情** 用一段话总结会话主线和接下来该做什么，不进入对话上下文；**折叠** 把卡片收成一行胶囊。摘要按对话保存，重启后还在。借鉴了 [hamzafer](https://github.com/hamzafer) 的 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 源码。[详细说明 →](mods/status-card/README.zh-CN.md)
 
 <img src="mods/status-card/docs/card-waiting.zh.svg" alt="status-card 卡片" width="720">
 
