@@ -330,29 +330,27 @@ describe('status-card', () => {
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     // 缓存从请求发出时算起，还剩 59 分 30 秒，向上取整
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · $/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^ 缓存 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · ● 缓存 60 分$/ })).toBeDefined()
     // 折叠后右侧是时间和缓存，不再显示用时
     await ui.press({ key: 'fold' })
-    expect(await ui.find({ type: 'Text', text: /^17:00 · $/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^ 缓存 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:00 · ● 缓存 60 分$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     await ui.unmount()
 
     // 切到这次还没用过的模型算失效，切回来继续显示原模型的剩余时间
     await $.classic.PostModelSwitch({ to_model: 'claude-sonnet-5-5' } as any)
     let view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await view.find({ type: 'Text', text: /^ 缓存已失效$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: / ● 缓存已失效$/ })).toBeDefined()
     await view.unmount()
     await $.classic.PostModelSwitch({ to_model: 'claude-opus-5-5[1m]' } as any)
     await clock.advance(50 * 60_000)
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await view.find({ type: 'Text', text: /^ 缓存 10 分$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: / ● 缓存 10 分$/ })).toBeDefined()
     await view.unmount()
 
     await clock.advance(10 * 60_000)
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await view.find({ type: 'Text', text: /^ 缓存已失效$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: / ● 缓存已失效$/ })).toBeDefined()
     await view.unmount()
 
     // 第二天（本机时间 00:10）不再显示
@@ -375,7 +373,7 @@ describe('status-card', () => {
     await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
     await clock.settle()
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await ui.find({ type: 'Text', text: /^ 缓存 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: / ● 缓存 60 分$/ })).toBeDefined()
     await ui.unmount()
   })
 

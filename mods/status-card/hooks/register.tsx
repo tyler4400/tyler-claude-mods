@@ -463,13 +463,16 @@ export const register: Register = (on, options) => {
     // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
     const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt)}` : record.recap.now
 
-    // 右上角时间后面的缓存提示：状态色圆点加暗色文字
-    const cacheMark = cache && (
-      <Box flexDirection="row" flexShrink={0}>
-        <Text color={CACHE_COLORS[cache.tone]}>{'●'}</Text>
-        <Text dimColor>{` ${cache.text}`}</Text>
-      </Box>
-    )
+    // 右上角的暗色文字，轮到你时后面跟缓存提示：彩色圆点和暗色文字是同一个 Text 里平级的子 Text，
+    // 和第二行的「● 本轮」同一种写法；外层不加 dimColor，免得圆点也被压暗
+    const metaText = (prefix: string) => {
+      if (!cache) return prefix === '' ? undefined : <Text dimColor>{prefix}</Text>
+      const dot = <Text color={CACHE_COLORS[cache.tone]}>{'●'}</Text>
+      const label = <Text dimColor>{` ${cache.text}`}</Text>
+      return prefix === ''
+        ? <Text>{dot}{label}</Text>
+        : <Text><Text dimColor>{`${prefix} · `}</Text>{dot}{label}</Text>
+    }
 
     if (await read($, isFolded)) {
       // 胶囊依次优先显示：工作中这一轮在做什么、等你处理的事、目标；放不下时截断这段文字，右侧的时间、用时或缓存和展开按钮保持完整
@@ -495,10 +498,7 @@ export const register: Register = (on, options) => {
                   : <Text wrap="truncate-end">{capsuleText}</Text>}
               </Box>
               <Box flexDirection="row" flexShrink={0} gap={1}>
-                <Box flexDirection="row" flexShrink={0}>
-                  {capsuleMeta !== '' && <Text dimColor>{cacheMark ? `${capsuleMeta} · ` : capsuleMeta}</Text>}
-                  {cacheMark}
-                </Box>
+                {metaText(capsuleMeta)}
                 <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
               </Box>
             </Box>
@@ -524,12 +524,7 @@ export const register: Register = (on, options) => {
                 ? <Text dimColor wrap="truncate-end">{`🎯 ${goal}`}</Text>
                 : <Text bold wrap="truncate-end">{`🎯 ${goal}`}</Text>}
             </Box>
-            {(meta !== '' || cacheMark) && (
-              <Box flexDirection="row" flexShrink={0}>
-                {meta !== '' && <Text dimColor>{cacheMark ? `${meta} · ` : meta}</Text>}
-                {cacheMark}
-              </Box>
-            )}
+            {(meta !== '' || cache) && <Box flexShrink={0}>{metaText(meta)}</Box>}
           </Box>
           <Box flexDirection="row" justifyContent="space-between" gap={2}>
             <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
