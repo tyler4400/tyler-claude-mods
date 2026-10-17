@@ -4,8 +4,8 @@ const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: f
 
 const SUMMARY = '{"goal":"让摘要跨重启保留","now":"写完卡片","waiting":"你确认样式","next":"跑测试","overall":"fork 了 status-card"}'
 
-// 测试里可以切换的 session：id、transcript 里 grep 出的 sessionId 行、模型返回的摘要
-type Ctx = { sessionId: string; transcript: string[]; summary: string }
+// 测试里可以切换的 session：id、transcript 里 grep 出的 sessionId 行、模型返回的摘要、transcript 里含 ephemeral_ 的行
+type Ctx = { sessionId: string; transcript: string[]; summary: string; cacheLines?: string }
 
 // 代替 mod 下面的引擎
 function engine(on: any, store: Map<string, unknown>, ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY }) {
@@ -16,10 +16,20 @@ function engine(on: any, store: Map<string, unknown>, ctx: Ctx = { sessionId: 's
   on('session.id', () => ({ value: ctx.sessionId }))
   on('session.cwd', () => ({ value: '/work' }))
   on('process.run', (_$: any, e: any) => {
-    const stdout = e.argv[0] === 'grep' ? ctx.transcript.map(id => `"sessionId":"${id}"\n`).join('') : '+0800\n'
+    const stdout =
+      e.argv[0] === 'grep'
+        ? ctx.transcript.map(id => `"sessionId":"${id}"\n`).join('')
+        : e.argv[0] === 'sh'
+          ? (ctx.cacheLines ?? '')
+          : '+0800\n'
     return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
   on('classic.SessionStart', () => ({}))
+  on('classic.PostModelSwitch', () => ({}))
+  on('classic.UserPromptSubmit', () => ({}))
+  on('turn.step', async function* (_$: any, e: any) {
+    return { turnId: e.turnId, index: e.index, answer: '', toolUses: [], stopReason: 'end_turn', usage: null }
+  })
   on('session.end', (_$: any, e: any) => ({ sessionId: e.sessionId }))
   on('store.get', (_$: any, e: any) => ({ value: store.get(e.key) }))
   on('store.set', (_$: any, e: any) => {
@@ -130,10 +140,10 @@ describe('status-card', () => {
     await ui.press({ key: 'fold' })
     expect(store.get('pref:folded')).toBe(true)
     expect(await ui.find({ key: 'unfold' })).toBeDefined()
-    // 胶囊优先显示等你处理的事，右侧只有更新时间和用时
+    // 胶囊优先显示等你处理的事；轮到你时右侧不再显示用时，没有缓存记录时只剩更新时间
     expect(await ui.find({ type: 'Text', text: /^⏳ 等你：你确认样式$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeUndefined()
-    expect(await ui.find({ type: 'Text', text: /^17:00 · 0秒$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:00$/ })).toBeDefined()
     // 等你时只有 ⏳，没有 ✅
     expect(await ui.find({ type: 'Text', text: /^✅$/ })).toBeUndefined()
     await ui.press({ key: 'unfold' })
@@ -160,6 +170,8 @@ describe('status-card', () => {
     const clock = engine(on, store)
     await oneTurn($, clock)
 
+    // 上一轮 17:00 结束，过了 5 分钟才发下一条
+    await clock.advance(5 * 60_000)
     await $.prompt.submit({ text: '详情改成最多 180 字' } as any)
     await clock.settle()
     await $.tool.call({ tool: 'Edit', file_path: '/work/mods/recap.ts', old_string: 'a', new_string: 'b' } as any)
@@ -168,13 +180,13 @@ describe('status-card', () => {
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
     expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
-    // 轮次是正在进行的这一轮
-    expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:00$/ })).toBeDefined()
+    // 轮次是正在进行的这一轮，时间是你发出消息的时间
+    expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:05$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
     await ui.press({ key: 'fold' })
     expect(await ui.find({ type: 'Text', text: /^本轮：把详情上限改成 180 字$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^17:00 · 1分32秒$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:05 · 1分32秒$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^●$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     await ui.unmount()
@@ -183,7 +195,7 @@ describe('status-card', () => {
     await clock.settle()
     const idle = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await idle.find({ type: 'Text', text: /本轮/ })).toBeUndefined()
-    expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:01$/ })).toBeDefined()
+    expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:06$/ })).toBeDefined()
     // 轮到你时保留这一轮的最终统计，并写进 store
     expect(await idle.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
     await idle.unmount()
@@ -289,5 +301,101 @@ describe('status-card', () => {
     expect(await ui.find({ type: 'Text', text: /^🎯 旧版记录$/ })).toBeDefined()
     await ui.unmount()
     expect(store.get('rec:s1')).toEqual(record)
+  })
+
+  test('轮到你时右上角显示缓存剩余时间，按模型分开记，跨天不显示', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const usage = (m5: number, h1: number) =>
+      JSON.stringify({ type: 'assistant', isSidechain: false, message: { usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: usage(0, 900) }
+    const clock = engine(on, store, ctx)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.SessionStart({ source: 'startup', transcript_path: '/t/s1.jsonl' } as any)
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+    for await (const _ of $.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5[1m]', messageCount: 1 } as any)) {
+      // 只需要跑完这一步
+    }
+    await clock.advance(30_000)
+
+    // 工作中不显示缓存
+    const working = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
+    expect(await working.find({ type: 'Text', text: /缓存/ })).toBeUndefined()
+    await working.unmount()
+
+    await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+    await clock.settle()
+    expect(store.get('cache:s1')).toEqual({
+      model: 'claude-opus-5-5',
+      byModel: { 'claude-opus-5-5': { at: Date.UTC(2026, 9, 13, 9, 0), ttlMs: 3_600_000 } },
+      updatedAt: Date.UTC(2026, 9, 13, 9, 0),
+    })
+
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    // 缓存从请求发出时算起，还剩 59 分 30 秒，向上取整
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存还剩 60 分$/ })).toBeDefined()
+    // 折叠后右侧是时间和缓存，不再显示用时
+    await ui.press({ key: 'fold' })
+    expect(await ui.find({ type: 'Text', text: /^17:00 · 缓存还剩 60 分$/ })).toBeDefined()
+    await ui.press({ key: 'unfold' })
+    await ui.unmount()
+
+    // 切到这次还没用过的模型算过期，切回来继续显示原模型的剩余时间
+    await $.classic.PostModelSwitch({ to_model: 'claude-sonnet-5-5' } as any)
+    let view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存过期$/ })).toBeDefined()
+    await view.unmount()
+    await $.classic.PostModelSwitch({ to_model: 'claude-opus-5-5[1m]' } as any)
+    await clock.advance(50 * 60_000)
+    view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    // 10 分钟以内单独标红
+    expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · $/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: /^缓存仅剩 10 分$/ })).toBeDefined()
+    await view.unmount()
+
+    await clock.advance(10 * 60_000)
+    view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存过期$/ })).toBeDefined()
+    await view.unmount()
+
+    // 第二天（本机时间 00:10）缓存提示和更新时间都不再显示
+    await clock.set(Date.UTC(2026, 9, 13, 16, 10))
+    view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await view.find({ type: 'Text', text: /缓存/ })).toBeUndefined()
+    expect(await view.find({ type: 'Text', text: /^第 1 轮$/ })).toBeDefined()
+    await view.unmount()
+  })
+
+  test('热重载后没有 classic.SessionStart，从发消息时的 transcript 路径读缓存时长', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const line = JSON.stringify({ type: 'assistant', message: { usage: { cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 900 } } } })
+    const clock = engine(on, store, { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: line })
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.UserPromptSubmit({ prompt: '帮我把摘要做成卡片，样式选 E', transcript_path: '/t/s1.jsonl' } as any)
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+    for await (const _ of $.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', messageCount: 1 } as any)) {
+      // 只需要跑完这一步
+    }
+    await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+    await clock.settle()
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存还剩 60 分$/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('transcript 里读不到 TTL 时不显示缓存', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const clock = engine(on, store, { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: 'not json\n' })
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.SessionStart({ source: 'startup', transcript_path: '/t/s1.jsonl' } as any)
+    await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+    for await (const _ of $.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', messageCount: 1 } as any)) {
+      // 只需要跑完这一步
+    }
+    await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+    await clock.settle()
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /缓存/ })).toBeUndefined()
+    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    await ui.unmount()
   })
 })

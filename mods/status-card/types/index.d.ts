@@ -28,6 +28,15 @@ export type TurnProgress = { intent: string; turn: number; calls: number; files:
 
 export type DetailView = { status: 'loading' | 'ready' | 'error'; text: string }
 
+/** 某个模型的提示缓存：主线程最后一次请求的时刻，和 transcript 里这次写入缓存用的 TTL */
+export type CacheEntry = { at: number; ttlMs: number }
+
+/** 一个 session 的提示缓存，按模型分开记：切回原来的模型时，它的缓存可能还没过期 */
+export type CacheState = { model: string; byModel: Record<string, CacheEntry>; updatedAt: number }
+
+/** 右上角的缓存提示：fresh 剩 10 分钟以上，low 不到 10 分钟（标红），expired 已过期 */
+export type CacheHint = { text: string; tone: 'fresh' | 'low' | 'expired' }
+
 declare module 'claude-code' {
   interface PluginState {
     'status-card': {
@@ -38,6 +47,7 @@ declare module 'claude-code' {
       isFolded: boolean
       detail: DetailView | null
       transcriptPath: string
+      cache: CacheState | null
     }
   }
 }

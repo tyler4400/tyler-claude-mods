@@ -1,7 +1,7 @@
 // 不依赖引擎的纯逻辑：语言判断、截断、提示词、解析和时间格式，单独测试
 import type { PromptOrigin } from 'claude-code'
 
-import type { Lang, Recap, SessionRecord, TurnStats } from '../types'
+import type { CacheEntry, CacheHint, CacheState, Lang, Recap, SessionRecord, TurnStats } from '../types'
 
 const FIELD_MAX = 100
 const OVERALL_MAX = 400
@@ -22,6 +22,9 @@ const LABELS = {
     failed: '详情生成失败，稍后再试。',
     noRecap: '还没有摘要，等这一轮结束后再试。',
     goalPending: '目标会在这一轮结束后总结',
+    cacheLeft: (minutes: number) => `缓存还剩 ${minutes} 分`,
+    cacheLow: (minutes: number) => `缓存仅剩 ${minutes} 分`,
+    cacheExpired: '缓存过期',
   },
   en: {
     turn: (n: number) => `turn ${n}`,
@@ -38,6 +41,9 @@ const LABELS = {
     failed: 'Could not write the details. Try again later.',
     noRecap: 'No recap yet. Try again after this turn ends.',
     goalPending: 'The goal is summarized when this turn ends',
+    cacheLeft: (minutes: number) => `cache ${minutes}m left`,
+    cacheLow: (minutes: number) => `only ${minutes}m of cache left`,
+    cacheExpired: 'cache expired',
   },
 }
 
@@ -257,15 +263,18 @@ export function countTurns(messages: readonly { role: string; text: string }[]):
   return messages.filter(m => m.role === 'user' && m.text.trim() !== '').length
 }
 
-/** 更新时间：当天只显示 `HH:mm`，其他日子 `MMDD HH:mm`（如 1013 20:06），按本机时区 */
+function isSameLocalDay(a: number, b: number, offsetMinutes: number): boolean {
+  const x = new Date(a + offsetMinutes * 60_000)
+  const y = new Date(b + offsetMinutes * 60_000)
+  return x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth() && x.getUTCDate() === y.getUTCDate()
+}
+
+/** 更新时间：当天显示 `HH:mm`，按本机时区；其他日子返回空字符串，不显示（对话里每条回复本来就有日期时间） */
 export function formatTime(at: number, now: number, offsetMinutes: number): string {
-  const local = (ms: number) => new Date(ms + offsetMinutes * 60_000)
-  const a = local(at)
-  const b = local(now)
+  if (!isSameLocalDay(at, now, offsetMinutes)) return ''
+  const a = new Date(at + offsetMinutes * 60_000)
   const pad = (n: number) => String(n).padStart(2, '0')
-  const time = `${pad(a.getUTCHours())}:${pad(a.getUTCMinutes())}`
-  const sameDay = a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate()
-  return sameDay ? time : `${pad(a.getUTCMonth() + 1)}${pad(a.getUTCDate())} ${time}`
+  return `${pad(a.getUTCHours())}:${pad(a.getUTCMinutes())}`
 }
 
 /** `date +%z` 的输出（+0800）转成分钟 */
@@ -280,4 +289,64 @@ export function parseOffset(z: string): number {
 export function formatStats(stats: TurnStats, lang: Lang): string {
   const L = labels(lang)
   return [L.calls(stats.calls), ...(stats.files > 0 ? [L.files(stats.files)] : []), formatElapsed(stats.elapsedMs, lang)].join(' · ')
+}
+
+const MINUTE_MS = 60_000
+const CACHE_LOW_MS = 10 * MINUTE_MS
+const TTL_5M_MS = 5 * MINUTE_MS
+const TTL_1H_MS = 60 * MINUTE_MS
+
+/** 同一模型的不同写法归成一个：去掉 `[1m]` 这类上下文窗口后缀 */
+export function modelKey(model: string): string {
+  return model.replace(/\[[^\]]*\]$/, '')
+}
+
+/**
+ * transcript 里含 `ephemeral_` 的几行中，主线程最近一次写入缓存用的 TTL；读不到返回 undefined。
+ * 同一次请求两种都写了时按 5 分钟算：短的那段在前缀末尾，它过期后整段就命中不了
+ */
+export function cacheTtlFromTranscript(lines: string): number | undefined {
+  for (const row of lines.split('\n').reverse()) {
+    let entry: { type?: string; isSidechain?: boolean; message?: { usage?: { cache_creation?: Record<string, number> } } }
+    try {
+      entry = JSON.parse(row)
+    } catch {
+      continue
+    }
+    if (entry?.type !== 'assistant' || entry.isSidechain) continue
+    const creation = entry.message?.usage?.cache_creation
+    if ((creation?.ephemeral_5m_input_tokens ?? 0) > 0) return TTL_5M_MS
+    if ((creation?.ephemeral_1h_input_tokens ?? 0) > 0) return TTL_1H_MS
+  }
+  return undefined
+}
+
+function cacheLeftMs(entry: CacheEntry, now: number): number {
+  return entry.at + entry.ttlMs - now
+}
+
+/**
+ * 右上角的缓存提示。缓存不是今天用过的不显示；当前模型没有记录（刚切到一个这次还没用过的模型）算过期。
+ * 分钟数向上取整：10 分以上是 fresh，10 分及以下是 low（卡片上标红）
+ */
+export function cacheHint(state: CacheState | null, now: number, offsetMinutes: number, lang: Lang): CacheHint | undefined {
+  const entries = state ? Object.values(state.byModel) : []
+  if (!state || entries.length === 0) return undefined
+  const lastUsed = Math.max(...entries.map(entry => entry.at))
+  if (!isSameLocalDay(lastUsed, now, offsetMinutes)) return undefined
+  const L = labels(lang)
+  const entry = state.byModel[state.model]
+  const left = entry ? cacheLeftMs(entry, now) : 0
+  if (left <= 0) return { text: L.cacheExpired, tone: 'expired' }
+  const minutes = Math.ceil(left / MINUTE_MS)
+  return left > CACHE_LOW_MS ? { text: L.cacheLeft(minutes), tone: 'fresh' } : { text: L.cacheLow(minutes), tone: 'low' }
+}
+
+/** 到提示的分钟数下一次变化还有多久；已失效或没有记录时不用再刷新 */
+export function nextCacheChange(state: CacheState | null, now: number): number | undefined {
+  const entry = state?.byModel[state.model]
+  if (!entry) return undefined
+  const left = cacheLeftMs(entry, now)
+  if (left <= 0) return undefined
+  return left % MINUTE_MS || MINUTE_MS
 }

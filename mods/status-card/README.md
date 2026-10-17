@@ -18,15 +18,17 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 
 Always three lines:
 
-1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress; `HH:mm` for today, `MMDD HH:mm` for other days, e.g. `1013 20:06`).
+1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress and the time is when you sent its message; the time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time). When it is your turn, the **cache hint** follows the time; see below.
 2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase; after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
-When the window gets narrow, the turn, time, stats and buttons on the right stay whole and the text on the left is cut instead.
+When the window gets narrow, the turn, time, cache hint, stats and buttons on the right stay whole and the text on the left is cut instead.
+
+- **Cache hint**: how long Claude's prompt cache has left, as plain text: dim `cache 45m left` with more than 10 minutes left, red `only 6m of cache left` within 10 minutes, and dim `cache expired` once it lapses. Carrying on while the cache is warm saves rewriting the whole context into it. It counts from when the main thread's last request was sent; the lifetime (5 minutes or 1 hour) is read from this session's transcript, and when it cannot be read the hint is not shown. It is kept per model: switching to a model this session has not used yet shows it expired, and switching back shows the original model's time left. A cache last used on another day (say, looking back at yesterday's session) is not shown. Shown only when it is your turn, not while Claude works.
 
 - **The border colour** shows the state: working, waiting on you, or idle.
 - **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
-- **Fold**: shrinks the card to a one-line capsule showing one thing: while Claude works, a dot in the working colour and what it is doing this turn; when something waits on you, ⏳ and what it is; otherwise ✅ and the goal; on the right the update time, the elapsed time and an **Unfold** button. The capsule is as wide as its content and at most one full line; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
+- **Fold**: shrinks the card to a one-line capsule showing one thing: while Claude works, a dot in the working colour and what it is doing this turn; when something waits on you, ⏳ and what it is; otherwise ✅ and the goal; on the right, without the turn, the update time, then the elapsed time while Claude works or the cache hint when it is your turn, and an **Unfold** button. The capsule is as wide as its content and at most one full line; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
 
 ## Install
 
@@ -86,21 +88,22 @@ Long text keeps its head and tail with a note saying how much was cut, and the m
 
 These are real model requests and count toward your usage.
 
-**Where the data lives:** in `$.store`, which Claude Code gives each plugin as a JSON file under `~/.claude/plugins/store/`. There is one record per session (latest recap, running summary, turn, update time, language, last turn's stats, cached details) plus the fold preference. Records not updated for `retentionDays` are removed when a session starts.
+**Where the data lives:** in `$.store`, which Claude Code gives each plugin as a JSON file under `~/.claude/plugins/store/`. There is one record per session (latest recap, running summary, turn, update time, language, last turn's stats, cached details) and one prompt-cache state (each model's last request time and cache lifetime), plus the fold preference. Records not updated for `retentionDays` are removed when a session starts.
 
 Records are keyed by session id: resuming and compaction keep the id, so the card comes back as it was. A session opened by forking, or by right-clicking and choosing Start a side chat, gets a new id; its transcript starts with entries copied from the original, which still carry the original session's id, so status-card copies the original's card and the two update separately from then on. Records 0.5.x stored under a fingerprint of the working directory and first message are migrated only through the session-id mapping recorded at the time.
 
-**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat. It makes no other network requests and otherwise reads or writes no files outside its store.
+**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. It makes no other network requests and otherwise reads or writes no files outside its store.
 
-Hooks: `session.start`, `session.end`, `prompt.submit`, `tool.call`, `turn.complete`, `ui.render` (`AbovePrompt`).
+Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `classic.PostModelSwitch`, `session.end`, `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
 
 ## Limitations
 
 - Finding the original session of a fork or side chat reads its transcript. If Claude Code changes the transcript format, such a session starts with an empty card rather than picking up another conversation's.
+- The cache lifetime is read from the transcript's `usage.cache_creation`. If Claude Code changes the transcript format, the cache hint stops showing rather than showing a wrong time. The time left is worked out from the last request, not asked of the API; requests sent to the same conversation from elsewhere (another process resuming it) are not seen here.
 - If a model call fails or returns something malformed, the previous recap stays.
 - The turn number counts your messages with text in the session, slash commands included. After compaction it keeps counting up and never goes back.
 - Drawn only in Claude Code's desktop app and terminal; not in the VS Code extension or `claude -p`.
-- Checked with `claude plugin validate` and `claude plugin test` on Claude Code 2.1.294 / 2.1.295.
+- Checked with `claude plugin validate` and `claude plugin test` on Claude Code 2.1.294 / 2.1.295 / 2.1.299.
 
 ## Credits
 
