@@ -20,6 +20,7 @@ import {
   labels,
   modelKey,
   nextCacheChange,
+  NOW_MAX,
   parseIntent,
   parseOffset,
   parseSummary,
@@ -415,7 +416,7 @@ export const register: Register = (on, options) => {
       const record = await read($, recordAtom)
       if (record?.draft) {
         // 摘要出来前，占位卡片的第二行先写这一轮的意图
-        const now = finished?.intent || clip(prompt)
+        const now = finished?.intent || clip(prompt, NOW_MAX)
         await update($, recordAtom, () => ({ ...record, recap: { ...record.recap, now }, stats: stats ?? record.stats }))
       } else if (record && stats) {
         await saveRecord($, { ...record, stats })

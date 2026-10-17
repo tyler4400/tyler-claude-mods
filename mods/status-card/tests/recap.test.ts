@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatTime, headTail, isExpired, isTypedPrompt, modelKey, nextCacheChange, parseIntent, parseOffset, parseSummary, retentionDaysFrom, summaryRequest, userTrail } from '../hooks/recap'
+import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatStats, formatTime, headTail, isExpired, isTypedPrompt, modelKey, NOW_MAX, nextCacheChange, parseIntent, parseOffset, parseSummary, retentionDaysFrom, summaryRequest, userTrail } from '../hooks/recap'
 
 describe('detectLang', () => {
   test('中文为主判为 zh，夹杂英文标识符也算', async () => {
@@ -188,5 +188,20 @@ describe('isExpired', () => {
   })
   test('没有更新时间的记录按很久以前处理', async () => {
     expect(isExpired(undefined, now, 180)).toBe(true)
+  })
+})
+
+describe('第二行', () => {
+  test('一句话目标和摘要的 now 最多 60 个字符，其他字段仍是 100', async () => {
+    expect(NOW_MAX).toBe(60)
+    expect(Array.from(parseIntent('做'.repeat(100)))).toHaveLength(60)
+    const parsed = parseSummary(JSON.stringify({ goal: '目'.repeat(100), now: '做'.repeat(100), waiting: '等'.repeat(100), next: '步'.repeat(100), overall: 'x' }))
+    expect(Array.from(parsed!.recap.now)).toHaveLength(60)
+    expect(Array.from(parsed!.recap.goal)).toHaveLength(100)
+    expect(Array.from(parsed!.recap.waiting)).toHaveLength(100)
+  })
+  test('右侧只显示用时，不再带调用次数和改动文件数', async () => {
+    expect(formatStats({ calls: 18, files: 3, elapsedMs: 161_000 }, 'zh')).toBe('2分41秒')
+    expect(formatStats({ calls: 1, files: 0, elapsedMs: 65_000 }, 'en')).toBe('1m05s')
   })
 })

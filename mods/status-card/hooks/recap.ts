@@ -4,6 +4,8 @@ import type { PromptOrigin } from 'claude-code'
 import type { CacheEntry, CacheHint, CacheState, Lang, Recap, SessionRecord, TurnStats } from '../types'
 
 const FIELD_MAX = 100
+/** 第二行（现在 / 本轮）要和右侧用时挤在一行里，放得更短 */
+export const NOW_MAX = 60
 const OVERALL_MAX = 400
 
 const LABELS = {
@@ -12,8 +14,6 @@ const LABELS = {
     sep: '：',
     thisTurn: '本轮',
     thinking: 'thinking ...',
-    calls: (n: number) => `${n} 次调用`,
-    files: (n: number) => `改 ${n} 个文件`,
     waiting: '等你',
     expand: '详情',
     collapse: '收起',
@@ -31,8 +31,6 @@ const LABELS = {
     sep: ': ',
     thisTurn: 'This turn',
     thinking: 'thinking ...',
-    calls: (n: number) => `${n} ${n === 1 ? 'call' : 'calls'}`,
-    files: (n: number) => `${n} ${n === 1 ? 'file' : 'files'} edited`,
     waiting: 'waiting on you',
     expand: 'Details',
     collapse: 'Hide',
@@ -151,7 +149,7 @@ export function summaryRequest(input: {
   const system = [
     'You keep a one-glance recap of a coding session. Plain words, no em dashes.',
     'Reply with JSON only: {"goal","now","waiting","next","overall"}.',
-    `"goal", "now", "waiting", "next": one sentence each, at most ${FIELD_MAX} characters.`,
+    `"goal", "waiting", "next": one sentence each, at most ${FIELD_MAX} characters. "now": one sentence, at most ${NOW_MAX} characters.`,
     MAINLINE_RULE,
     '"goal": the mainline. Keep the previous goal unless the mainline changed; never replace it with the current sub-problem.',
     '"now": what was just done. "waiting": what the assistant is waiting on from the person, or "". "next": the next step.',
@@ -201,7 +199,7 @@ export function intentRequest(input: { lang: Lang; previous: SessionRecord | nul
   const system = [
     'Say in one short phrase what the assistant is about to do in this turn of a coding session, based on the person\'s message.',
     'If the message is short (like "ok", "start", "go on"), infer it from the previous recap\'s next step and what was waiting on the person.',
-    `At most ${FIELD_MAX} Chinese characters or 50 English words. Reply with the phrase only: no quotes, no trailing period.`,
+    `At most ${NOW_MAX} characters. Reply with the phrase only: no quotes, no trailing period.`,
     LANG_RULE[input.lang],
   ].join('\n')
   const prompt = [
@@ -213,7 +211,7 @@ export function intentRequest(input: { lang: Lang; previous: SessionRecord | nul
 
 export function parseIntent(text: string): string {
   const line = text.trim().split('\n')[0] ?? ''
-  return clip(line.replace(/^["'“”「」]+|["'“”「」]+$/g, ''))
+  return clip(line.replace(/^["'“”「」]+|["'“”「」]+$/g, ''), NOW_MAX)
 }
 
 /** 已用时：45s、1m32s、1h05m；中文用 秒/分/时 */
@@ -235,7 +233,7 @@ export function parseSummary(text: string): { recap: Recap; overall: string } | 
     const raw = (k: string) => (typeof o[k] === 'string' ? (o[k] as string).replace(/\s*—\s*/g, ', ').trim() : '')
     const goal = clip(raw('goal'))
     if (!goal) return null
-    const recap = { goal, now: clip(raw('now')), waiting: clip(raw('waiting')), next: clip(raw('next')) }
+    const recap = { goal, now: clip(raw('now'), NOW_MAX), waiting: clip(raw('waiting')), next: clip(raw('next')) }
     return { recap, overall: Array.from(raw('overall')).slice(0, OVERALL_MAX * 2).join('') }
   } catch {
     return null
@@ -297,10 +295,9 @@ export function isExpired(updatedAt: number | undefined, now: number, retentionD
   return retentionDays !== -1 && now - (updatedAt ?? 0) > retentionDays * DAY_MS
 }
 
-/** 第二行右侧：调用次数 · 改了几个文件 · 用时 */
+/** 第二行右侧：只显示用时 */
 export function formatStats(stats: TurnStats, lang: Lang): string {
-  const L = labels(lang)
-  return [L.calls(stats.calls), ...(stats.files > 0 ? [L.files(stats.files)] : []), formatElapsed(stats.elapsedMs, lang)].join(' · ')
+  return formatElapsed(stats.elapsedMs, lang)
 }
 
 const MINUTE_MS = 60_000

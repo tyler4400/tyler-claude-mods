@@ -19,7 +19,7 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 Always three lines:
 
 1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress and the time is when you sent its message; the time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time). When it is your turn, the **cache hint** follows the time; see below.
-2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
+2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. On the right: the **elapsed time**. It ticks every second while Claude works, then keeps the turn's final time, even after a restart. The line is at most 60 characters. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
 When the window gets narrow, the turn, time, cache hint, stats and buttons on the right stay whole and the text on the left is cut instead.
@@ -45,7 +45,7 @@ claude plugin marketplace add tyler4400/tyler-claude-mods
 claude plugin install status-card@tyler-claude-mods --scope user
 ```
 
-The card appears as soon as you send your first message; until the first recap is ready, the goal line reads "The goal is summarized when this turn ends". If you install it in the middle of a turn, that turn's card has no call count or elapsed time on the right; they show from the next turn.
+The card appears as soon as you send your first message; until the first recap is ready, the goal line reads "The goal is summarized when this turn ends". If you install it in the middle of a turn, that turn's card has no elapsed time on the right; it shows from the next turn.
 
 **Upgrading from where-am-i or goal-card:** these are earlier names of this mod. Uninstall the old one, then install status-card. Recaps are stored per plugin name, so old recaps do not carry over.
 
@@ -72,7 +72,7 @@ Change these in `/config` or `/plugin configure status-card@tyler-claude-mods`. 
 
 ## How it works
 
-**Two model calls per turn.** When you send a message, one `haiku` call writes the "This turn: …" phrase from your message (first 1000 + last 500 characters) and the previous recap. Output is capped at 80 tokens.
+**Two model calls per turn.** When you send a message, one `haiku` call writes the "This turn: …" phrase from your message (first 1000 + last 500 characters) and the previous recap. The phrase is at most 60 characters; output is capped at 150 tokens.
 
 After each turn of the main conversation, another `haiku` call updates the recap. Its input is:
 
@@ -92,7 +92,7 @@ These are real model requests and count toward your usage.
 
 Records are keyed by session id: resuming and compaction keep the id, so the card comes back as it was. A session opened by forking, or by right-clicking and choosing Start a side chat, gets a new id; its transcript starts with entries copied from the original, which still carry the original session's id, so status-card copies the original's card and the two update separately from then on. Records 0.5.x stored under a fingerprint of the working directory and first message are migrated only through the session-id mapping recorded at the time.
 
-**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write. It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. It makes no other network requests and otherwise reads or writes no files outside its store.
+**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write (kept in the stored stats, no longer shown). It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. It makes no other network requests and otherwise reads or writes no files outside its store.
 
 Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `classic.PostModelSwitch`, `session.end`, `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
 

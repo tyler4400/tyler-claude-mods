@@ -182,7 +182,7 @@ describe('status-card', () => {
     expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
     // 轮次是正在进行的这一轮，时间是你发出消息的时间
     expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:05$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^1分32秒$/ })).toBeDefined()
     // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
     await ui.press({ key: 'fold' })
     expect(await ui.find({ type: 'Text', text: /^本轮：把详情上限改成 180 字$/ })).toBeDefined()
@@ -197,7 +197,7 @@ describe('status-card', () => {
     expect(await idle.find({ type: 'Text', text: /本轮/ })).toBeUndefined()
     expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:06$/ })).toBeDefined()
     // 轮到你时保留这一轮的最终统计，并写进 store
-    expect(await idle.find({ type: 'Text', text: /^2 次调用 · 改 1 个文件 · 1分32秒$/ })).toBeDefined()
+    expect(await idle.find({ type: 'Text', text: /^1分32秒$/ })).toBeDefined()
     await idle.unmount()
     const saved = store.get('rec:s1') as any
     expect(saved.stats).toEqual({ calls: 2, files: 1, elapsedMs: 92_000 })
