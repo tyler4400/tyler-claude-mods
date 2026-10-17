@@ -19,7 +19,7 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 Always three lines:
 
 1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress and the time is when you sent its message; the time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time). When it is your turn, the **cache hint** follows the time; see below.
-2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase; after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
+2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. On the right: **calls · files edited · elapsed**. It ticks every second while Claude works, then keeps the turn's final numbers, even after a restart. It does not repeat the per-tool status Claude Code already shows.
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
 
 When the window gets narrow, the turn, time, cache hint, stats and buttons on the right stay whole and the text on the left is cut instead.
@@ -101,10 +101,23 @@ Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `cla
 - Finding the original session of a fork or side chat reads its transcript. If Claude Code changes the transcript format, such a session starts with an empty card rather than picking up another conversation's.
 - The cache lifetime is read from the transcript's `usage.cache_creation`. If Claude Code changes the transcript format, the cache hint stops showing rather than showing a wrong time. The time left is worked out from the last request, not asked of the API; requests sent to the same conversation from elsewhere (another process resuming it) are not seen here.
 - If a model call fails or returns something malformed, the previous recap stays.
-- A "next step" box with a question (the options an agent attaches when it ends a turn) covers the mod card drawn above the prompt (`AbovePrompt`), hiding the card. Avoid letting the agent show that box; if you want it to stop and wait for you, ask in the reply itself instead of attaching the box.
+- In the desktop app, the card is hidden while a "next step" box with a question is showing; see [The card disappears behind a "next step" box](#the-card-disappears-behind-a-next-step-box).
 - The turn number counts your messages with text in the session, slash commands included. After compaction it keeps counting up and never goes back.
 - Drawn only in Claude Code's desktop app and terminal; not in the VS Code extension or `claude -p`.
 - Checked with `claude plugin validate` and `claude plugin test` on Claude Code 2.1.294 / 2.1.295 / 2.1.299.
+
+## The card disappears behind a "next step" box
+
+In Claude Code's desktop app, when an agent ends a turn with a "next step" box that carries a question (a question with option buttons), the card above the prompt goes away. It comes back once the box closes. A turn that ends with only a recap, without a question, leaves the card in place. The terminal does not do this.
+
+The card is not covered. The desktop app stops drawing it on purpose, and the mod still hands over its card each time. The app shows the box and the mod band above the prompt one at a time: while the box has a visible button or text, the app draws nothing in the band. That check reads the box, not the card, so nothing in the card changes it (adding a close button does not help). The mod API has no setting for it either.
+
+What you can do:
+
+- Ask the agent not to attach a question when it ends a turn; if you want it to stop and wait for you, ask in the reply itself.
+- If you want both on screen at once, it has to change in the desktop app; send feedback to Anthropic.
+
+This was traced in the desktop app's front-end code as of 2026-10-17 (the band is wrapped so that it draws nothing while the session's `turnCardShown` is true). That code is not public and may change.
 
 ## Credits
 

@@ -173,7 +173,7 @@ async function writeIntent($: Engine, text: string): Promise<void> {
     const intent = parseIntent(result.text)
     if (intent) await update($, progress, p => (p ? { ...p, intent } : p))
   } catch {
-    // 拿不到一句话目标时显示你消息的开头
+    // 拿不到一句话目标时第二行一直显示 thinking ...
   }
 }
 
@@ -460,7 +460,7 @@ export const register: Register = (on, options) => {
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
     // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
-    const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || clip(prompt)}` : record.recap.now
+    const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || L.thinking}` : record.recap.now
 
     // 右上角的暗色文字，轮到你时后面跟缓存提示；缓存不到 10 分钟时这段提示用红色
     const metaText = (prefix: string) => {
