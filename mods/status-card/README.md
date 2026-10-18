@@ -2,7 +2,7 @@ English | [简体中文](README.zh-CN.md)
 
 # status-card
 
-[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/)
 
 A recap card above the Claude Code prompt: the goal, what is happening now, and what waits on you. The recap is saved per conversation, so it is still there after you restart the app or open a session from days ago. Made for long sessions: step away, come back, and pick up where you left off at a glance.
 

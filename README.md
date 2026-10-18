@@ -10,7 +10,7 @@ Both mods work in the desktop app and the terminal.
 
 ## status-card
 
-[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/)
 
 A three-line recap card above the prompt: the goal, what Claude is doing or just did, and what waits on you. Line two shows the turn's elapsed time. **Details** sums up the session's mainline and next steps in one paragraph that never enters the conversation, and **Fold** shrinks the card to a one-line capsule. The recap is saved per conversation, so it is still there after a restart. Built on the source of [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) by [hamzafer](https://github.com/hamzafer). [More →](mods/status-card/README.md)
 
@@ -18,7 +18,7 @@ A three-line recap card above the prompt: the goal, what Claude is doing or just
 
 ## session-title
 
-[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/)
 
 Keeps the session title in the form `前缀｜MMDD｜主体` (prefix｜month-day｜subject). After every turn Haiku checks whether the title still names what the session is working on, rewrites it when the mainline has moved on, and leaves it alone for a passing question. [More →](mods/session-title/README.md)
 

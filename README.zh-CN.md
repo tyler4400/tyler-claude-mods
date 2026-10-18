@@ -10,7 +10,7 @@
 
 ## status-card
 
-[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/)
 
 输入框上方的三行会话卡片：目标、Claude 正在做或刚做完什么、等你处理的事。第二行显示这一轮的用时。**详情** 用一段话总结会话主线和接下来该做什么，不进入对话上下文；**折叠** 把卡片收成一行胶囊。摘要按对话保存，重启后还在。借鉴了 [hamzafer](https://github.com/hamzafer) 的 [where-am-i](https://github.com/hamzafer/claude-code-mods/tree/main/mods/where-am-i) 源码。[详细说明 →](mods/status-card/README.zh-CN.md)
 
@@ -18,7 +18,7 @@
 
 ## session-title
 
-[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/)
 
 按「前缀｜MMDD｜主体」维护会话标题。每轮结束后由 Haiku 判断标题是否还说得出会话现在在做的事：主线变了就改，临时插问不动。[详细说明 →](mods/session-title/README.zh-CN.md)
 
