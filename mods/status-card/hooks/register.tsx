@@ -196,13 +196,13 @@ async function restoreCache($: Engine): Promise<void> {
   await scheduleCacheTick($)
 }
 
-// TTL 只从 transcript 读；读不到时这个模型不记，卡片上就不显示
-async function readCacheTtl($: Engine): Promise<number | undefined> {
+// TTL 只从 transcript 读，且只认这个模型自己的写入
+async function readCacheTtl($: Engine, model: string): Promise<number | undefined> {
   const path = await read($, transcriptPath)
   if (!path) return undefined
   try {
     const { stdout } = await $.process.run(['sh', '-c', 'grep -F \'"ephemeral_\' "$1" | tail -n 20', 'sh', path])
-    return cacheTtlFromTranscript(stdout)
+    return cacheTtlFromTranscript(stdout, model)
   } catch {
     return undefined
   }
@@ -213,7 +213,8 @@ async function recordCache($: Engine): Promise<void> {
   lastStep = undefined
   if (!step) return
   const byModel = { ...(await read($, cacheAtom))?.byModel }
-  const ttlMs = await readCacheTtl($)
+  // 这次只读了缓存、没有写入时，沿用这个模型已知的 TTL；一直读不到才不显示
+  const ttlMs = (await readCacheTtl($, step.model)) ?? byModel[step.model]?.ttlMs
   if (ttlMs) byModel[step.model] = { at: step.at, ttlMs }
   else delete byModel[step.model]
   await saveCache($, { model: step.model, byModel, updatedAt: step.at })

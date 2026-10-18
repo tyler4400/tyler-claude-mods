@@ -314,18 +314,20 @@ export function modelKey(model: string): string {
 }
 
 /**
- * transcript 里含 `ephemeral_` 的几行中，主线程最近一次写入缓存用的 TTL；读不到返回 undefined。
+ * transcript 里含 `ephemeral_` 的几行中，主线程里这个模型最近一次写入缓存用的 TTL；读不到返回 undefined。
+ * 缓存按模型分开，别的模型写的 TTL 不能算到它头上；这个模型只读缓存的响应没有写入，也跳过
  * 同一次请求两种都写了时按 5 分钟算：短的那段在前缀末尾，它过期后整段就命中不了
  */
-export function cacheTtlFromTranscript(lines: string): number | undefined {
+export function cacheTtlFromTranscript(lines: string, model: string): number | undefined {
   for (const row of lines.split('\n').reverse()) {
-    let entry: { type?: string; isSidechain?: boolean; message?: { usage?: { cache_creation?: Record<string, number> } } }
+    let entry: { type?: string; isSidechain?: boolean; message?: { model?: string; usage?: { cache_creation?: Record<string, number> } } }
     try {
       entry = JSON.parse(row)
     } catch {
       continue
     }
     if (entry?.type !== 'assistant' || entry.isSidechain) continue
+    if (typeof entry.message?.model !== 'string' || modelKey(entry.message.model) !== model) continue
     const creation = entry.message?.usage?.cache_creation
     if ((creation?.ephemeral_5m_input_tokens ?? 0) > 0) return TTL_5M_MS
     if ((creation?.ephemeral_1h_input_tokens ?? 0) > 0) return TTL_1H_MS
