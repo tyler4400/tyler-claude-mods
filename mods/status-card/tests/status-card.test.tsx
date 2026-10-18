@@ -349,8 +349,8 @@ describe('status-card', () => {
 
   test('轮到你时右上角显示缓存剩余时间，按模型分开记，跨天不显示', async ($, on) => {
     const store = new Map<string, unknown>()
-    const usage = (m5: number, h1: number) =>
-      JSON.stringify({ type: 'assistant', isSidechain: false, message: { usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
+    const usage = (m5: number, h1: number, model = 'claude-opus-5-5') =>
+      JSON.stringify({ type: 'assistant', isSidechain: false, message: { model, usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
     const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: usage(0, 900) }
     const clock = engine(on, store, ctx)
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
@@ -411,7 +411,7 @@ describe('status-card', () => {
 
   test('热重载后没有 classic.SessionStart，从发消息时的 transcript 路径读缓存时长', async ($, on) => {
     const store = new Map<string, unknown>()
-    const line = JSON.stringify({ type: 'assistant', message: { usage: { cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 900 } } } })
+    const line = JSON.stringify({ type: 'assistant', message: { model: 'claude-opus-5-5', usage: { cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 900 } } } })
     const clock = engine(on, store, { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: line })
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
     await $.classic.UserPromptSubmit({ prompt: '帮我把摘要做成卡片，样式选 E', transcript_path: '/t/s1.jsonl' } as any)
@@ -424,6 +424,41 @@ describe('status-card', () => {
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存 60 分$/ })).toBeDefined()
     await ui.unmount()
+  })
+
+  test('缓存时长只取这次请求模型自己的写入；这次只读缓存时沿用已知的时长', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const usage = (model: string, m5: number, h1: number) =>
+      JSON.stringify({ type: 'assistant', isSidechain: false, message: { model, usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
+    const sonnet = 'claude-sonnet-5-5'
+    const opus = 'claude-opus-5-5'
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: usage(sonnet, 5, 0) }
+    const clock = engine(on, store, ctx)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.SessionStart({ source: 'startup', transcript_path: '/t/s1.jsonl' } as any)
+    const run = async (model: string, turnId: string) => {
+      await $.prompt.submit({ text: '帮我把摘要做成卡片，样式选 E' } as any)
+      for await (const _ of $.turn.step({ turnId, index: 0, model, messageCount: 1 } as any)) {
+        // 只需要跑完这一步
+      }
+      await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
+      await clock.settle()
+    }
+    const ttlOf = (model: string) => (store.get('cache:s1') as any).byModel[model]?.ttlMs
+
+    // Sonnet 写 5 分钟 → Opus 写 1 小时 → 回到 Sonnet 只读缓存：Sonnet 不能借用 Opus 的 1 小时
+    await run(sonnet, 't1')
+    ctx.cacheLines = [usage(sonnet, 5, 0), usage(opus, 0, 9)].join('\n')
+    await run(opus, 't2')
+    ctx.cacheLines = [usage(sonnet, 5, 0), usage(opus, 0, 9), usage(sonnet, 0, 0)].join('\n')
+    await run(sonnet, 't3')
+    expect(ttlOf(sonnet)).toBe(300_000)
+    expect(ttlOf(opus)).toBe(3_600_000)
+
+    // transcript 里已经看不到 Sonnet 的写入（只剩 Opus 的行）：沿用之前记下的 5 分钟，不借用 Opus 的
+    ctx.cacheLines = usage(opus, 0, 9)
+    await run(sonnet, 't4')
+    expect(ttlOf(sonnet)).toBe(300_000)
   })
 
   test('transcript 里读不到 TTL 时不显示缓存', async ($, on) => {

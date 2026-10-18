@@ -133,17 +133,31 @@ describe('formatElapsed / parseIntent', () => {
 })
 
 describe('cacheTtlFromTranscript / cacheHint / nextCacheChange', () => {
-  const row = (m5: number, h1: number, extra: object = {}) =>
-    JSON.stringify({ type: 'assistant', ...extra, message: { usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
+  const row = (m5: number, h1: number, extra: object = {}, model = 'claude-opus-5-5') =>
+    JSON.stringify({ type: 'assistant', ...extra, message: { model, usage: { cache_creation: { ephemeral_5m_input_tokens: m5, ephemeral_1h_input_tokens: h1 } } } })
   const at = Date.UTC(2026, 9, 13, 9, 0)
   const state = (ttlMs: number) => ({ model: 'opus', byModel: { opus: { at, ttlMs } }, updatedAt: at })
 
-  test('取主线程最近一次写入缓存的 TTL，两种都写时按 5 分钟', async () => {
-    expect(cacheTtlFromTranscript([row(0, 10), row(0, 0)].join('\n'))).toBe(3_600_000)
-    expect(cacheTtlFromTranscript([row(0, 10), row(5, 0)].join('\n'))).toBe(300_000)
-    expect(cacheTtlFromTranscript(row(3, 10))).toBe(300_000)
-    expect(cacheTtlFromTranscript([row(0, 10), row(5, 0, { isSidechain: true }), 'oops'].join('\n'))).toBe(3_600_000)
-    expect(cacheTtlFromTranscript('{"type":"user","message":{"content":"ephemeral_"}}')).toBeUndefined()
+  test('取主线程里这个模型最近一次写入缓存的 TTL，两种都写时按 5 分钟', async () => {
+    const opus = 'claude-opus-5-5'
+    expect(cacheTtlFromTranscript([row(0, 10), row(0, 0)].join('\n'), opus)).toBe(3_600_000)
+    expect(cacheTtlFromTranscript([row(0, 10), row(5, 0)].join('\n'), opus)).toBe(300_000)
+    expect(cacheTtlFromTranscript(row(3, 10), opus)).toBe(300_000)
+    expect(cacheTtlFromTranscript([row(0, 10), row(5, 0, { isSidechain: true }), 'oops'].join('\n'), opus)).toBe(3_600_000)
+    expect(cacheTtlFromTranscript('{"type":"user","message":{"content":"ephemeral_"}}', opus)).toBeUndefined()
+  })
+
+  test('只认这个模型自己的写入：别的模型的 TTL 不算，没有 model 字段的行读不出来', async () => {
+    const sonnet = 'claude-sonnet-5-5'
+    // Sonnet 写 5 分钟 → Opus 写 1 小时 → 回到 Sonnet 只读缓存：Sonnet 仍是 5 分钟
+    const mixed = [row(5, 0, {}, sonnet), row(0, 10, {}, 'claude-opus-5-5'), row(0, 0, {}, sonnet)].join('\n')
+    expect(cacheTtlFromTranscript(mixed, sonnet)).toBe(300_000)
+    expect(cacheTtlFromTranscript(mixed, 'claude-opus-5-5')).toBe(3_600_000)
+    // 这个模型从没写过：读不到，不借用别的模型
+    expect(cacheTtlFromTranscript(row(0, 10, {}, 'claude-opus-5-5'), sonnet)).toBeUndefined()
+    // transcript 里带 [1m] 后缀的写法和归一化后的模型算同一个
+    expect(cacheTtlFromTranscript(row(0, 10, {}, 'claude-opus-5-5[1m]'), 'claude-opus-5-5')).toBe(3_600_000)
+    expect(cacheTtlFromTranscript(JSON.stringify({ type: 'assistant', message: { usage: { cache_creation: { ephemeral_1h_input_tokens: 9 } } } }), sonnet)).toBeUndefined()
   })
 
   test('10 分钟以上是 fresh，以内是 low，过期是 expired；不是今天的不显示', async () => {
