@@ -2,7 +2,7 @@
 
 # status-card
 
-[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/)
+[![Mods Code: status-card](https://modscode.com/badge/tyler4400-status-card.svg)](https://modscode.com/claude-mods/mods/tyler4400-status-card/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--status-card-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--status-card/)
 
 输入框上方的会话摘要卡片：目标、现在在做什么、等你处理的事。摘要按对话保存，重启 app 或几天后回看旧会话，卡片还在。适合长会话：离开一会儿再回来，一眼就能接上。
 

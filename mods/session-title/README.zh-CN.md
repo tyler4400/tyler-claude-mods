@@ -2,7 +2,7 @@
 
 # session-title
 
-[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/)
 
 每轮结束后用 Haiku 按 [title-rules.md](title-rules.md) 的规则检查会话标题，格式为 `前缀｜MMDD｜主体`，例如 `探索｜1013｜ClaudeCode mods调研`。
 

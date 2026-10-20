@@ -2,7 +2,7 @@ English | [简体中文](README.zh-CN.md)
 
 # session-title
 
-[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/)
+[![Mods Code: session-title](https://modscode.com/badge/tyler4400-session-title.svg)](https://modscode.com/claude-mods/mods/tyler4400-session-title/) [![reach](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-reach.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/) [![validates](https://raw.githubusercontent.com/karanb192/awesome-claude-code-mods/main/badges/tyler4400--tyler-claude-mods--session-title-validates.svg)](https://mods.aidojo.si/mods/tyler4400--tyler-claude-mods--session-title/)
 
 After each turn, Haiku checks the session title against the rules in [title-rules.md](title-rules.md). Titles take the form `前缀｜MMDD｜主体` (prefix｜month-day｜subject), for example `探索｜1013｜ClaudeCode mods调研`. The rules are written for Chinese titles; edit them to suit your own style.
 
