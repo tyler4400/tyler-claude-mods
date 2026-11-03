@@ -487,20 +487,18 @@ export const register: Register = (on, options) => {
         .join(' · ')
       return (
         <Box flexDirection="column">
-          {/* 外层整行，胶囊作为可收缩的子项：内容短时按内容宽，超出一行时收缩 */}
-          <Box flexDirection="row">
-            <Box flexDirection="row" flexShrink={1} minWidth={0} gap={1} paddingX={1} {...border}>
-              {/* 行首：工作中是状态色圆点；等你时文字自带 ⏳，不加标记；空闲是 ✅ */}
-              {isWorking ? <Text color={stateColor}>{'●'}</Text> : !isWaiting && <Text>{DONE_MARK}</Text>}
-              <Box flexShrink={1} minWidth={0} overflow="hidden">
-                {isWaiting
-                  ? <Text color={settings.waitingColor} wrap="truncate-end">{capsuleText}</Text>
-                  : <Text wrap="truncate-end">{capsuleText}</Text>}
-              </Box>
-              <Box flexDirection="row" flexShrink={0} gap={1}>
-                {metaText(capsuleMeta)}
-                <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
-              </Box>
+          {/* 胶囊撑满一行：文字占满左侧剩余宽度，右侧的时间和展开按钮贴右边 */}
+          <Box flexDirection="row" gap={1} paddingX={1} {...border}>
+            {/* 行首：工作中是状态色圆点；等你时文字自带 ⏳，不加标记；空闲是 ✅ */}
+            {isWorking ? <Text color={stateColor}>{'●'}</Text> : !isWaiting && <Text>{DONE_MARK}</Text>}
+            <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
+              {isWaiting
+                ? <Text color={settings.waitingColor} wrap="truncate-end">{capsuleText}</Text>
+                : <Text wrap="truncate-end">{capsuleText}</Text>}
+            </Box>
+            <Box flexDirection="row" flexShrink={0} gap={1}>
+              {metaText(capsuleMeta)}
+              <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
             </Box>
           </Box>
           {rest}
