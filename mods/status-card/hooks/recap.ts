@@ -368,29 +368,39 @@ export function nextCacheChange(state: CacheState | null, now: number): number |
 }
 
 /**
- * 读 transcript 的脚本：先打印一行 `C <压缩次数>`，再给主 transcript 和 subagents/*.jsonl 里每行 assistant 记录打印 `M <message id> <output tokens>`。
+ * 读 transcript 的脚本：先打印一行 `C <压缩次数>`，再给主 transcript 和 subagents/*.jsonl 里每行 assistant 记录打印
+ * `M <message id> <usage 第一层到 output_tokens 为止的字段>`，例如 `M msg_x "input_tokens":3,"cache_creation_input_tokens":0,"cache_read_input_tokens":0,"output_tokens":9`。
  * 只输出这几个字段：长会话的 transcript 有几十 MB，整行读回来会超过 $.process.run 的 4 MiB 上限。
  * JSON 字符串里的引号都转义成了 \"，对话内容里出现同样的文字也匹配不上；
- * usage 里的 iterations 等嵌套对象也有 output_tokens，用 [^}]* 只取 usage 第一层的那个
+ * usage 里的 iterations 等嵌套对象也有这些字段，用 [^}]* 只取 usage 第一层的
  */
 export const USAGE_SCAN = [
   'f="$1"; dir="${f%.jsonl}/subagents"',
   `printf 'C %s\\n' "$(grep -c '"subtype":"compact_boundary"' "$f")"`,
-  `cat "$f" "$dir"/*.jsonl 2>/dev/null | grep -F '"type":"assistant"' | sed -n -E 's/.*"id":"(msg_[A-Za-z0-9_]+)".*"usage":\\{[^}]*"output_tokens":([0-9]+).*/M \\1 \\2/p'`,
+  `cat "$f" "$dir"/*.jsonl 2>/dev/null | grep -F '"type":"assistant"' | sed -n -E 's/.*"id":"(msg_[A-Za-z0-9_]+)".*"usage":\\{([^}]*"output_tokens":[0-9]+).*/M \\1 \\2/p'`,
 ].join('\n')
 
+/** 一次请求的全部 tokens：输入、写缓存、读缓存和输出，和美元按同样的口径算 */
+const TOKEN_FIELDS = ['input_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens', 'output_tokens']
+
+function sumTokenFields(usage: string): number {
+  let total = 0
+  for (const field of TOKEN_FIELDS) total += Number(usage.match(new RegExp(`"${field}":(\\d+)`))?.[1] ?? 0)
+  return total
+}
+
 /** 汇总 USAGE_SCAN 的输出：同一条回复在 transcript 里会写成好几行，按 message id 只算一次 */
-export function parseUsageScan(stdout: string): { compactions: number; outputTokens: number } {
+export function parseUsageScan(stdout: string): { compactions: number; totalTokens: number } {
   let compactions = 0
   const byId = new Map<string, number>()
   for (const line of stdout.split('\n')) {
-    const [kind, first, second] = line.trim().split(' ')
+    const [kind, first, usage = ''] = line.trim().split(' ')
     if (kind === 'C') compactions = Number(first) || 0
-    else if (kind === 'M' && first) byId.set(first, Math.max(byId.get(first) ?? 0, Number(second) || 0))
+    else if (kind === 'M' && first) byId.set(first, Math.max(byId.get(first) ?? 0, sumTokenFields(usage)))
   }
-  let outputTokens = 0
-  for (const tokens of byId.values()) outputTokens += tokens
-  return { compactions, outputTokens }
+  let totalTokens = 0
+  for (const tokens of byId.values()) totalTokens += tokens
+  return { compactions, totalTokens }
 }
 
 /** 1000 以下原样，往上用 k（一位小数）和 M（两位小数），去掉末尾的 0：3.1k、31k、7.45M */

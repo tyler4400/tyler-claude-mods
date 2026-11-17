@@ -4,7 +4,7 @@
 <text x="36" y="48" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">🎯 给公开 API 加限流</text>
 <text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">已压缩1次 · 第14轮 · 16:20</text>
 <text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ 已把限流器接进网关并补上测试</text>
-<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">2分41秒 · 48.2k · $3.27</text>
+<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">2分41秒 · 8.61M · $3.27</text>
 <text x="36" y="120" fill="#d4943a" font-size="14" text-anchor="start">⏳ 等你：默认限额定为每分钟 60 次还是 120 次</text>
 <text x="924" y="120" fill="#ececea" font-size="14" text-anchor="end">折叠</text>
 <text x="878" y="120" fill="#ececea" font-size="14" text-anchor="end">收起</text>

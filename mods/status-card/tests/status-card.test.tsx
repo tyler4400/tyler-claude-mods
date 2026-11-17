@@ -484,9 +484,9 @@ describe('status-card', () => {
     await ui.unmount()
   })
 
-  test('第一行显示压缩次数（没压缩过不显示），第二行在用时后显示累计 output tokens 和美元', async ($, on) => {
+  test('第一行显示压缩次数（没压缩过不显示），第二行在用时后显示累计 tokens（输入输出都算）和美元', async ($, on) => {
     const store = new Map<string, unknown>()
-    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, usageScan: 'C 0\nM msg_a 3000\nM msg_a 3000\nM msg_b 100\n', costUsd: 12.345 }
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, usageScan: `C 0\nM msg_a "input_tokens":1000,"cache_creation_input_tokens":200,"cache_read_input_tokens":1300,"output_tokens":500\nM msg_a "input_tokens":1000,"cache_creation_input_tokens":200,"cache_read_input_tokens":1300,"output_tokens":500\nM msg_b "output_tokens":100\n`, costUsd: 12.345 }
     const clock = engine(on, store, ctx)
     on('session.compact', (_$: any, e: any) => ({ messages: e.messages }))
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
@@ -499,7 +499,7 @@ describe('status-card', () => {
     await ui.unmount()
 
     // 手动 /compact 之后不等下一轮结束，稍后重数一次
-    ctx.usageScan = 'C 2\nM msg_a 3000\n'
+    ctx.usageScan = `C 2\nM msg_a "input_tokens":1000,"cache_creation_input_tokens":200,"cache_read_input_tokens":1300,"output_tokens":500\n`
     ctx.costUsd = 13
     await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: '总结一下', toolUses: [] }] } as any)
     await clock.advance(1000)
@@ -522,7 +522,7 @@ describe('status-card', () => {
   test('英文会话：第一行压缩次数和轮次，第二行用时、tokens、美元，第三行缓存提示', async ($, on) => {
     const store = new Map<string, unknown>()
     const cacheLine = JSON.stringify({ type: 'assistant', isSidechain: false, message: { model: 'claude-opus-5-5', usage: { cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 900 } } } })
-    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: cacheLine, usageScan: 'C 1\nM msg_a 7450000\n', costUsd: 0.4 }
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: cacheLine, usageScan: 'C 1\nM msg_a "input_tokens":50,"cache_read_input_tokens":7449950,"output_tokens":0\n', costUsd: 0.4 }
     const clock = engine(on, store, ctx)
     await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
     await $.classic.SessionStart({ source: 'startup', transcript_path: '/t/s1.jsonl' } as any)

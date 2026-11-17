@@ -20,7 +20,7 @@
 
 ```
 🎯 目标……                                    已压缩2次 · 第12轮 · 14:32
-✅ 这一轮做了什么……                          2分41秒 · 31k · $12.34
+✅ 这一轮做了什么……                        2分41秒 · 35.2M · $12.34
 ⏳ 等你：……                                  缓存剩38分  详情  折叠
 ```
 
@@ -28,9 +28,9 @@
    - **压缩次数**没压缩过时不显示，怎么数见 [累计统计怎么算](#累计统计怎么算)。
    - 工作中 N 是正在进行的这一轮，时间是你发出这条消息的时间；轮到你时是上一轮和摘要更新的时间。
    - 时间只在当天显示 `HH:mm`，其他日子不显示，对话里每条回复本来就有日期时间。
-2. **现在**：Claude 工作时显示工作色的圆点和 **本轮：一句话目标**（一句话还没写出来时显示 `thinking ...`），一轮结束后显示 **✅** 和这一轮做了什么。这一行最多 60 个字符，不重复原生界面里逐条跳动的工具状态。右侧是 **用时 · 累计 output tokens · 折算美元**：
+2. **现在**：Claude 工作时显示工作色的圆点和 **本轮：一句话目标**（一句话还没写出来时显示 `thinking ...`），一轮结束后显示 **✅** 和这一轮做了什么。这一行最多 60 个字符，不重复原生界面里逐条跳动的工具状态。右侧是 **用时 · 累计 tokens · 折算美元**：
    - **用时**：工作中每秒更新，结束后保留这一轮的最终用时，重启后也在。
-   - **output tokens** 和**美元**是整个会话的累计，见 [累计统计怎么算](#累计统计怎么算)。
+   - **tokens**（输入输出都算）和**美元**是整个会话的累计，见 [累计统计怎么算](#累计统计怎么算)。
 3. **⏳ 等你**：Claude 需要你处理的事。Claude 工作时（第二行已经说了在做什么）和没有要你处理的事时留空。右侧是**缓存提示**（见下方），然后是 **详情** 和 **折叠** 两个按钮。
 
 窗口变窄时，右侧的内容和按钮保持完整，截断的是左侧文字。
@@ -48,7 +48,7 @@
 | 数字 | 位置 | 来源 |
 |---|---|---|
 | 压缩次数 | 第一行右侧，如 `已压缩2次` | 主 transcript 里的压缩记录数 |
-| output tokens | 第二行右侧用时后面，如 `31k` | 主 transcript 和子 agent transcript 里每条回复的 `output_tokens` 之和 |
+| tokens | 第二行右侧用时后面，如 `35.2M` | 主 transcript 和子 agent transcript 里每条回复的输入、缓存写入、缓存读取、输出 tokens 之和 |
 | 美元 | 第二行最右，如 `$12.34` | `$.session.usage()` 的 `cost.usd` |
 
 ### 什么时候更新
@@ -66,11 +66,12 @@ Claude 工作中这三个数字不变，下一轮结束时一次性更新。
 - **闲置时的压缩**：1 小时缓存的会话闲置约 54 分钟（缓存时长的 90%）后，如果上下文有 200K token 以上，Claude Code 会在后台预先写好摘要。这一步不替换上下文，所以不算。等你下次发消息、且缓存已经过期时，它才用这份摘要真正压缩，这时写下压缩记录，计数加一。
 - 只数主 transcript：子 agent 自己的压缩不算。
 
-### output tokens
+### tokens
 
-- 把主 transcript 和 `<session id>/subagents/*.jsonl` 里所有 `"type":"assistant"` 的行取出来，读每行的 `message.id` 和 `message.usage.output_tokens`。
+- 把主 transcript 和 `<session id>/subagents/*.jsonl` 里所有 `"type":"assistant"` 的行取出来，读每行的 `message.id` 和 `message.usage` 第一层的四个数：`input_tokens`、`cache_creation_input_tokens`、`cache_read_input_tokens`、`output_tokens`，相加。
 - 同一条回复在 transcript 里会写成好几行（每个内容块一行），每行带同样的 usage，所以**按 message id 只算一次**。实测一个会话 94 行回复记录只有 49 个不同的 id，不去重会多算近一倍。
-- 只算 output，不算 input、缓存写入和缓存读取。缓存读取每轮都会把同一段前缀再读一遍，算进去的话数字只会一路暴涨，看不出实际新产出了多少。
+- 四类都算，和美元的口径一致：美元也是这四类 tokens 各按单价折算后相加。
+- 数字大多来自**缓存读取**：每次请求（包括每次工具调用后的那一次）都会把整段上下文从缓存再读一遍。上下文 20 万 tokens 时，调用 100 次就是 2000 万。缓存读取单价低（Opus 5.5 是输入的 0.05 倍），所以 tokens 很大时美元不一定高。
 - 不计入的部分：Claude Code 生成压缩摘要的调用、mod 自己的模型调用（如本卡片和 session-title 的 haiku），这些都不写进 transcript。
 - 显示：1000 以下原样，往上是一位小数的 `k`、两位小数的 `M`，去掉末尾的 0，如 `856`、`3.1k`、`31k`、`7.45M`。
 
@@ -83,8 +84,8 @@ Claude 工作中这三个数字不变，下一轮结束时一次性更新。
 
 ### 实现细节
 
-- 一次 `sh` 调用完成两件事：`grep -c` 数压缩记录；`cat` 主 transcript 和子 agent transcript，`grep` 出回复行，再用 `sed` 只输出 message id 和 output tokens，然后在 mod 里去重求和。只输出这几个字段，是因为长会话的 transcript 可能有几十 MB，而 `$.process.run` 最多读回 4 MiB。实测 45 MB 的 transcript 约 0.5 秒。
-- JSON 字符串里的引号都转义成了 `\"`，所以对话内容里即使出现 `"output_tokens":` 这样的文字也不会被误认。usage 里的 `iterations` 等嵌套对象也有 `output_tokens`，只取 usage 第一层的那个。
+- 一次 `sh` 调用完成两件事：`grep -c` 数压缩记录；`cat` 主 transcript 和子 agent transcript，`grep` 出回复行，再用 `sed` 只输出 message id 和 usage 第一层到 `output_tokens` 为止的那几个字段，然后在 mod 里去重求和。只输出这几个字段，是因为长会话的 transcript 可能有几十 MB，而 `$.process.run` 最多读回 4 MiB。实测 45 MB 的 transcript 约 0.5 秒。
+- JSON 字符串里的引号都转义成了 `\"`，所以对话内容里即使出现 `"output_tokens":` 这样的文字也不会被误认。usage 里的 `iterations` 等嵌套对象也有这些字段，只取 usage 第一层的。
 - 这三个数字不存进 `$.store`，每次启动重新算。读 transcript 失败时保留上一次的数；从没读成功过时不显示压缩次数和 tokens。
 - fork 或 side chat 出来的会话，transcript 开头是从原会话复制来的记录，所以压缩次数和 tokens 会把原会话的部分也算进去。
 
@@ -150,7 +151,7 @@ claude plugin install status-card@tyler-claude-mods --scope user
 
 记录按 session id 存：续接、压缩上下文都不换 id，卡片原样找回。fork 或右键 Start a side chat 开出来的 session 会换新 id，它的 transcript 开头是从原对话复制来的条目、仍带着原 session 的 id，status-card 据此复制一份原卡片，之后两边各自更新。0.5.x 按"工作目录 + 第一条消息"指纹存的旧记录，只通过当时记下的 session id 对应关系迁移过来。
 
-**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件（只存进统计，不再显示）；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区；当前 session 还没有卡片时，用 `grep` 从它自己的 transcript 里读出 `sessionId`，用来认出 fork 或 side chat 的原 session；每轮结束时用 `grep` 和 `tail` 读出 transcript 里最近几条含 `ephemeral_` 的行，得到这次写入提示缓存用的时长；会话启动、每轮结束和每次压缩后，用 `sh` 里的 `grep`、`cat`、`sed` 从 transcript 和 `subagents/*.jsonl` 里只取出压缩记录数和每条回复的 message id、`output_tokens`，并调用 `$.session.usage()` 读累计花费。没有其他网络请求，除此之外不读写 store 以外的文件。
+**它会做什么、不会做什么：** `tool.call` 只观察，调用原样放行，用来统计调用次数和被 Edit/Write 改过的文件（只存进统计，不再显示）；不改你的消息、不改 Claude 的回复。除了上面的模型调用，只在会话启动时运行一次 `date +%z` 取本机时区；当前 session 还没有卡片时，用 `grep` 从它自己的 transcript 里读出 `sessionId`，用来认出 fork 或 side chat 的原 session；每轮结束时用 `grep` 和 `tail` 读出 transcript 里最近几条含 `ephemeral_` 的行，得到这次写入提示缓存用的时长；会话启动、每轮结束和每次压缩后，用 `sh` 里的 `grep`、`cat`、`sed` 从 transcript 和 `subagents/*.jsonl` 里只取出压缩记录数和每条回复的 message id、usage 里的四个 tokens 数，并调用 `$.session.usage()` 读累计花费。没有其他网络请求，除此之外不读写 store 以外的文件。
 
 Hooks：`session.start`、`classic.SessionStart`、`classic.UserPromptSubmit`、`classic.PostModelSwitch`、`session.end`、`session.compact`（只观察，压缩原样放行）、`prompt.submit`、`tool.call`、`turn.step`（只记请求发出的时间）、`turn.complete`、`ui.render`（`AbovePrompt`）。
 

@@ -3,10 +3,11 @@ import { describe, expect, test } from 'claude-code/testing'
 import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatStats, formatTime, formatTokens, formatUsd, headTail, isExpired, isTypedPrompt, modelKey, NOW_MAX, nextCacheChange, parseIntent, parseOffset, parseSummary, parseUsageScan, retentionDaysFrom, summaryRequest, userTrail } from '../hooks/recap'
 
 describe('会话累计统计', () => {
-  test('同一条回复写成多行时只算一次，压缩次数取 C 行', async () => {
-    const stdout = 'C 2\nM msg_a 374\nM msg_a 374\nM msg_b 100\nM msg_c 0\n'
-    expect(parseUsageScan(stdout)).toEqual({ compactions: 2, outputTokens: 474 })
-    expect(parseUsageScan('C \n')).toEqual({ compactions: 0, outputTokens: 0 })
+  test('输入、读写缓存、输出四类相加；同一条回复写成多行时只算一次，压缩次数取 C 行', async () => {
+    const a = '"input_tokens":4,"cache_creation_input_tokens":100,"cache_read_input_tokens":200,"output_tokens":70'
+    const stdout = `C 2\nM msg_a ${a}\nM msg_a ${a}\nM msg_b "input_tokens":0,"output_tokens":100\nM msg_c "output_tokens":0\n`
+    expect(parseUsageScan(stdout)).toEqual({ compactions: 2, totalTokens: 474 })
+    expect(parseUsageScan('C \n')).toEqual({ compactions: 0, totalTokens: 0 })
   })
   test('tokens 用 k（一位小数）和 M（两位小数），去掉末尾的 0', async () => {
     expect(formatTokens(856)).toBe('856')

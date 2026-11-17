@@ -20,7 +20,7 @@ Always three lines:
 
 ```
 🎯 Goal…                                 2 compactions · turn 12 · 14:32
-✅ What this turn did…                            2m41s · 31k · $12.34
+✅ What this turn did…                          2m41s · 35.2M · $12.34
 ⏳ waiting on you: …                      cache 38m left  Details  Fold
 ```
 
@@ -28,9 +28,9 @@ Always three lines:
    - The **compaction count** is left out until the first compaction; see [How the session totals are counted](#how-the-session-totals-are-counted).
    - While Claude works, N is the turn in progress and the time is when you sent its message; when it is your turn, they are the last turn and when its recap was written.
    - The time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time.
-2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. The line is at most 60 characters and does not repeat the per-tool status Claude Code already shows. On the right: **elapsed time · total output tokens · cost in dollars**:
+2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. The line is at most 60 characters and does not repeat the per-tool status Claude Code already shows. On the right: **elapsed time · total tokens · cost in dollars**:
    - The **elapsed time** ticks every second while Claude works, then keeps the turn's final time, even after a restart.
-   - **Output tokens** and **dollars** are totals for the whole session; see [How the session totals are counted](#how-the-session-totals-are-counted).
+   - **Tokens** (input and output alike) and **dollars** are totals for the whole session; see [How the session totals are counted](#how-the-session-totals-are-counted).
 3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **cache hint** (see below), then the **Details** and **Fold** buttons.
 
 When the window gets narrow, everything on the right stays whole and the text on the left is cut instead.
@@ -48,7 +48,7 @@ The three running figures on the card cover the whole session, not the current t
 | Figure | Where | Source |
 |---|---|---|
 | Compactions | right of line 1, such as `2 compactions` | compaction records in the main transcript |
-| Output tokens | right of line 2, after the elapsed time, such as `31k` | the sum of each reply's `output_tokens` in the main and subagent transcripts |
+| Tokens | right of line 2, after the elapsed time, such as `35.2M` | the sum of each reply's input, cache-write, cache-read and output tokens in the main and subagent transcripts |
 | Dollars | far right of line 2, such as `$12.34` | `cost.usd` from `$.session.usage()` |
 
 ### When they update
@@ -66,11 +66,12 @@ While Claude works the three figures stay as they are and update together when t
 - **Compaction while idle**: in a session on the one-hour prompt cache, after about 54 idle minutes (90% of the cache lifetime) and with 200K tokens of context or more, Claude Code writes a summary in the background. That step does not replace the context, so it does not count. When you next send a message and the cache has expired, Claude Code compacts with that summary and writes the record, and the count goes up then.
 - Only the main transcript is counted; a subagent's own compactions are not.
 
-### Output tokens
+### Tokens
 
-- Every `"type":"assistant"` line in the main transcript and in `<session id>/subagents/*.jsonl` is read for `message.id` and `message.usage.output_tokens`.
+- Every `"type":"assistant"` line in the main transcript and in `<session id>/subagents/*.jsonl` is read for `message.id` and four top-level figures in `message.usage`: `input_tokens`, `cache_creation_input_tokens`, `cache_read_input_tokens` and `output_tokens`, which are added up.
 - One reply is written as several lines (one per content block), each with the same usage, so **each message id counts once**. In one measured session, 94 reply lines held 49 distinct ids; without that, the total would come out nearly double.
-- Only output counts: not input, cache writes or cache reads. Cache reads re-read the same prefix every turn, so counting them would make the figure climb steeply without showing how much was newly produced.
+- All four count, the same basis as the dollars, which price each of the four and add them up.
+- Most of the figure is **cache reads**: every request, including the one after each tool call, reads the whole context back from the cache. With 200K tokens of context, 100 calls make 20M. Cache reads are cheap (0.05× the input price on Opus 5.5), so a large token count does not always mean a large cost.
 - Left out: the calls Claude Code makes to write compaction summaries, and mods' own model calls (such as the haiku calls of this card and session-title). None of them is written to the transcript.
 - Shown as is below 1000, then in `k` with one decimal or `M` with two, trailing zeros dropped: `856`, `3.1k`, `31k`, `7.45M`.
 
@@ -83,8 +84,8 @@ While Claude works the three figures stay as they are and update together when t
 
 ### Implementation details
 
-- One `sh` call does both counts: `grep -c` counts the compaction records; `cat` streams the main and subagent transcripts, `grep` keeps the reply lines, and `sed` prints only each message id and its output tokens, which the mod then de-duplicates and adds up. Only those fields are printed because a long session's transcript can run to tens of megabytes, while `$.process.run` reads back at most 4 MiB. A 45 MB transcript takes about half a second.
-- Quotes inside JSON strings are escaped as `\"`, so text such as `"output_tokens":` inside the conversation is never mistaken for a field. Nested objects in usage such as `iterations` carry their own `output_tokens`; only the top-level one in usage is read.
+- One `sh` call does both counts: `grep -c` counts the compaction records; `cat` streams the main and subagent transcripts, `grep` keeps the reply lines, and `sed` prints only each message id and the usage fields up to `output_tokens`, which the mod then de-duplicates and adds up. Only those fields are printed because a long session's transcript can run to tens of megabytes, while `$.process.run` reads back at most 4 MiB. A 45 MB transcript takes about half a second.
+- Quotes inside JSON strings are escaped as `\"`, so text such as `"output_tokens":` inside the conversation is never mistaken for a field. Nested objects in usage such as `iterations` carry the same fields; only the top-level ones are read.
 - The figures are not kept in `$.store`; they are worked out again at every start. When the transcript cannot be read, the last figures stay; when it has never been read, the compaction count and tokens are not shown.
 - A session opened by forking or as a side chat starts with entries copied from the original, so its compaction count and tokens include the original's.
 
@@ -150,7 +151,7 @@ These are real model requests and count toward your usage.
 
 Records are keyed by session id: resuming and compaction keep the id, so the card comes back as it was. A session opened by forking, or by right-clicking and choosing Start a side chat, gets a new id; its transcript starts with entries copied from the original, which still carry the original session's id, so status-card copies the original's card and the two update separately from then on. Records 0.5.x stored under a fingerprint of the working directory and first message are migrated only through the session-id mapping recorded at the time.
 
-**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write (kept in the stored stats, no longer shown). It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. When the session starts, after each turn and after each compaction, it runs `grep`, `cat` and `sed` in `sh` to pull only the compaction-record count and each reply's message id and `output_tokens` out of the transcript and `subagents/*.jsonl`, and calls `$.session.usage()` for the cost so far. It makes no other network requests and otherwise reads or writes no files outside its store.
+**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write (kept in the stored stats, no longer shown). It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. When the session starts, after each turn and after each compaction, it runs `grep`, `cat` and `sed` in `sh` to pull only the compaction-record count and each reply's message id and the four token figures in its usage out of the transcript and `subagents/*.jsonl`, and calls `$.session.usage()` for the cost so far. It makes no other network requests and otherwise reads or writes no files outside its store.
 
 Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `classic.PostModelSwitch`, `session.end`, `session.compact` (only watches; every compaction goes through unchanged), `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
 

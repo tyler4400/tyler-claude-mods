@@ -237,10 +237,10 @@ async function scheduleCacheTick($: Engine): Promise<void> {
   })
 }
 
-// 压缩次数和 output tokens 只认 transcript；读不到时保留上一次的数，不清零
+// 压缩次数和 tokens 只认 transcript；读不到时保留上一次的数，不清零
 async function refreshUsage($: Engine): Promise<void> {
   const previous = await read($, usageAtom)
-  let counted: { compactions: number; outputTokens: number } | undefined
+  let counted: { compactions: number; totalTokens: number } | undefined
   const path = await read($, transcriptPath)
   if (path) {
     try {
@@ -256,9 +256,9 @@ async function refreshUsage($: Engine): Promise<void> {
     // 用上一次的数
   }
   const compactions = counted?.compactions ?? previous?.compactions
-  const outputTokens = counted?.outputTokens ?? previous?.outputTokens
-  if (compactions === undefined || outputTokens === undefined) return
-  await update($, usageAtom, () => ({ compactions, outputTokens, costUsd }))
+  const totalTokens = counted?.totalTokens ?? previous?.totalTokens
+  if (compactions === undefined || totalTokens === undefined) return
+  await update($, usageAtom, () => ({ compactions, totalTokens, costUsd }))
 }
 
 async function summarize($: Engine, answer: string, stats: TurnStats | undefined, turn: number | undefined): Promise<void> {
@@ -506,13 +506,13 @@ export const register: Register = (on, options) => {
         }
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
-    // 会话累计：第一行右侧轮次前的压缩次数（没压缩过不显示），第二行右侧用时后面的 output tokens 和折算美元；一轮结束时更新
+    // 会话累计：第一行右侧轮次前的压缩次数（没压缩过不显示），第二行右侧用时后面的全部 tokens 和折算美元；一轮结束时更新
     const usage = await read($, usageAtom)
     const compactText = usage && usage.compactions > 0 ? L.compacted(usage.compactions) : ''
     const headline = [compactText, meta].filter(part => part !== '').join(' · ')
     const totals = [
       progressStats,
-      usage ? formatTokens(usage.outputTokens) : '',
+      usage ? formatTokens(usage.totalTokens) : '',
       usage?.costUsd !== undefined ? formatUsd(usage.costUsd) : '',
     ]
       .filter(part => part !== '')

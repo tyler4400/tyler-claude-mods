@@ -22,7 +22,7 @@ COLORS = {
 GAP = 18
 
 # 两种状态 × 两种语言；数据是虚构的示例会话。
-# meta 是第一行右侧（压缩次数 · 轮次 · 时间），stats 是第二行右侧（用时 · output tokens · 美元），cache 在第三行按钮左边
+# meta 是第一行右侧（压缩次数 · 轮次 · 时间），stats 是第二行右侧（用时 · tokens · 美元），cache 在第三行按钮左边
 SAMPLES = {
     "en": {
         "waiting": {
@@ -30,7 +30,7 @@ SAMPLES = {
             "meta": "1 compaction · turn 14 · 16:20",
             "cache": ("cache 45m left", "fresh"),
             "now": "Wired the limiter into the gateway and added tests",
-            "stats": "2m41s · 48.2k · $3.27",
+            "stats": "2m41s · 8.61M · $3.27",
             "action": "⏳ waiting on you: Pick a default limit, 60 or 120 requests per minute",
             "buttons": ["Hide", "Fold"],
             "detail": "This session adds rate limiting to the public API so one client can no longer slow everyone down. "
@@ -42,7 +42,7 @@ SAMPLES = {
             "meta": "turn 15 · 16:32",
             "cache": ("cache 6m left", "low"),
             "now": "Set the default to 120 requests per minute and updated the docs",
-            "stats": "1m05s · 52.6k · $3.41",
+            "stats": "1m05s · 9.03M · $3.41",
             "action": "",
             "buttons": ["Details", "Fold"],
         },
@@ -53,7 +53,7 @@ SAMPLES = {
             "meta": "已压缩1次 · 第14轮 · 16:20",
             "cache": ("缓存剩45分", "fresh"),
             "now": "已把限流器接进网关并补上测试",
-            "stats": "2分41秒 · 48.2k · $3.27",
+            "stats": "2分41秒 · 8.61M · $3.27",
             "action": "⏳ 等你：默认限额定为每分钟 60 次还是 120 次",
             "buttons": ["收起", "折叠"],
             "detail": "这个会话在给公开 API 加限流，避免单个客户端拖慢所有人。令牌桶限流器已接进网关，测试通过，"
@@ -64,7 +64,7 @@ SAMPLES = {
             "meta": "第15轮 · 16:32",
             "cache": ("缓存剩6分", "low"),
             "now": "默认限额定为每分钟 120 次，文档已更新",
-            "stats": "1分05秒 · 52.6k · $3.41",
+            "stats": "1分05秒 · 9.03M · $3.41",
             "action": "",
             "buttons": ["详情", "折叠"],
         },
