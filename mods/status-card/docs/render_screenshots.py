@@ -18,16 +18,19 @@ COLORS = {
     "idle": "#4caf50",
     "low": "#e5534b",
 }
+# 第三行右侧缓存提示和按钮之间、按钮和按钮之间的间距，与卡片一致
+GAP = 18
 
-# 两种状态 × 两种语言；数据是虚构的示例会话
+# 两种状态 × 两种语言；数据是虚构的示例会话。
+# meta 是第一行右侧（压缩次数 · 轮次 · 时间），stats 是第二行右侧（用时 · output tokens · 美元），cache 在第三行按钮左边
 SAMPLES = {
     "en": {
         "waiting": {
             "goal": "🎯 Add rate limiting to the public API",
-            "meta": "turn 14 · 16:20",
-            "cache": ("cache 45m", "fresh"),
+            "meta": "1 compaction · turn 14 · 16:20",
+            "cache": ("cache 45m left", "fresh"),
             "now": "Wired the limiter into the gateway and added tests",
-            "stats": "2m41s",
+            "stats": "2m41s · 48.2k · $3.27",
             "action": "⏳ waiting on you: Pick a default limit, 60 or 120 requests per minute",
             "buttons": ["Hide", "Fold"],
             "detail": "This session adds rate limiting to the public API so one client can no longer slow everyone down. "
@@ -37,9 +40,9 @@ SAMPLES = {
         "idle": {
             "goal": "🎯 Add rate limiting to the public API",
             "meta": "turn 15 · 16:32",
-            "cache": ("cache 6m", "low"),
+            "cache": ("cache 6m left", "low"),
             "now": "Set the default to 120 requests per minute and updated the docs",
-            "stats": "1m05s",
+            "stats": "1m05s · 52.6k · $3.41",
             "action": "",
             "buttons": ["Details", "Fold"],
         },
@@ -47,10 +50,10 @@ SAMPLES = {
     "zh": {
         "waiting": {
             "goal": "🎯 给公开 API 加限流",
-            "meta": "第 14 轮 · 16:20",
-            "cache": ("缓存 45 分", "fresh"),
+            "meta": "已压缩1次 · 第14轮 · 16:20",
+            "cache": ("缓存剩45分", "fresh"),
             "now": "已把限流器接进网关并补上测试",
-            "stats": "2分41秒",
+            "stats": "2分41秒 · 48.2k · $3.27",
             "action": "⏳ 等你：默认限额定为每分钟 60 次还是 120 次",
             "buttons": ["收起", "折叠"],
             "detail": "这个会话在给公开 API 加限流，避免单个客户端拖慢所有人。令牌桶限流器已接进网关，测试通过，"
@@ -58,10 +61,10 @@ SAMPLES = {
         },
         "idle": {
             "goal": "🎯 给公开 API 加限流",
-            "meta": "第 15 轮 · 16:32",
-            "cache": ("缓存 6 分", "low"),
+            "meta": "第15轮 · 16:32",
+            "cache": ("缓存剩6分", "low"),
             "now": "默认限额定为每分钟 120 次，文档已更新",
-            "stats": "1分05秒",
+            "stats": "1分05秒 · 52.6k · $3.41",
             "action": "",
             "buttons": ["详情", "折叠"],
         },
@@ -94,19 +97,16 @@ def text(x: float, y: float, content: str, color: str, *, bold=False, anchor="st
     return f'<text x="{x}" y="{y}" fill="{color}" font-size="{size}" text-anchor="{anchor}"{weight}>{escape(content)}</text>'
 
 
-def meta_parts(sample: dict, right: float, y: float) -> list[str]:
-    """右上角：轮次和时间，轮到你时后面跟缓存提示；提示不到 10 分钟时标红"""
-    if "cache" not in sample:
-        return [text(right, y, sample["meta"], COLORS["dim"], anchor="end")]
-    cache_text, tone = sample["cache"]
-    cache_color = COLORS["low"] if tone == "low" else COLORS["dim"]
-    cache_end = right - text_width(cache_text, 14)
-    separator_width = text_width(" · ", 14)
-    return [
-        text(right, y, cache_text, cache_color, anchor="end"),
-        text(cache_end - separator_width, y, sample["meta"], COLORS["dim"], anchor="end"),
-        text(cache_end, y, " · ", COLORS["dim"], anchor="end"),
-    ]
+def action_row_right(sample: dict, right: float, y: float) -> list[str]:
+    """第三行右侧，从右往左：按钮，再左边是缓存提示；缓存不到 10 分钟时标红"""
+    parts, x = [], right
+    for label in reversed(sample["buttons"]):
+        parts.append(text(x, y, label, COLORS["text"], anchor="end"))
+        x -= text_width(label, 14) + GAP
+    if "cache" in sample:
+        cache_text, tone = sample["cache"]
+        parts.append(text(x, y, cache_text, COLORS["low"] if tone == "low" else COLORS["dim"], anchor="end"))
+    return parts
 
 
 def render(sample: dict, state: str) -> str:
@@ -115,17 +115,13 @@ def render(sample: dict, state: str) -> str:
     rows = [48, 84, 120]
     parts = [
         text(left, rows[0], sample["goal"], COLORS["text"], bold=True),
-        *meta_parts(sample, right, rows[0]),
+        text(right, rows[0], sample["meta"], COLORS["dim"], anchor="end"),
         # 这一轮已完成用 ✅，和 🎯、⏳ 一样与文字连写；工作中是状态色的圆点
         text(left, rows[1], f"✅ {sample['now']}", COLORS["text"]),
         text(right, rows[1], sample["stats"], COLORS["dim"], anchor="end"),
         text(left, rows[2], sample["action"], color if state == "waiting" else COLORS["dim"]),
+        *action_row_right(sample, right, rows[2]),
     ]
-    # 两个按钮右对齐，间距与卡片一致
-    x = right
-    for label in reversed(sample["buttons"]):
-        parts.append(text(x, rows[2], label, COLORS["text"], anchor="end"))
-        x -= text_width(label, 14) + 28
 
     bottom = rows[2] + 24
     if "detail" in sample:

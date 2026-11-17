@@ -37,6 +37,9 @@ export type CacheState = { model: string; byModel: Record<string, CacheEntry>; u
 /** 右上角的缓存提示：fresh 剩 10 分钟以上，low 不到 10 分钟（标红），expired 已过期 */
 export type CacheHint = { text: string; tone: 'fresh' | 'low' | 'expired' }
 
+/** 会话累计统计：压缩次数和 output tokens 从 transcript 数，美元是 $.session.usage() 按 API 定价折算的 */
+export type UsageStats = { compactions: number; outputTokens: number; costUsd?: number }
+
 declare module 'claude-code' {
   interface PluginState {
     'status-card': {
@@ -48,6 +51,7 @@ declare module 'claude-code' {
       detail: DetailView | null
       transcriptPath: string
       cache: CacheState | null
+      usage: UsageStats | null
     }
   }
 }

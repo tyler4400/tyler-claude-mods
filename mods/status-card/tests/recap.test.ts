@@ -1,6 +1,27 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatStats, formatTime, headTail, isExpired, isTypedPrompt, modelKey, NOW_MAX, nextCacheChange, parseIntent, parseOffset, parseSummary, retentionDaysFrom, summaryRequest, userTrail } from '../hooks/recap'
+import { cacheHint, cacheTtlFromTranscript, clip, countTurns, detectLang, formatElapsed, formatStats, formatTime, formatTokens, formatUsd, headTail, isExpired, isTypedPrompt, modelKey, NOW_MAX, nextCacheChange, parseIntent, parseOffset, parseSummary, parseUsageScan, retentionDaysFrom, summaryRequest, userTrail } from '../hooks/recap'
+
+describe('会话累计统计', () => {
+  test('同一条回复写成多行时只算一次，压缩次数取 C 行', async () => {
+    const stdout = 'C 2\nM msg_a 374\nM msg_a 374\nM msg_b 100\nM msg_c 0\n'
+    expect(parseUsageScan(stdout)).toEqual({ compactions: 2, outputTokens: 474 })
+    expect(parseUsageScan('C \n')).toEqual({ compactions: 0, outputTokens: 0 })
+  })
+  test('tokens 用 k（一位小数）和 M（两位小数），去掉末尾的 0', async () => {
+    expect(formatTokens(856)).toBe('856')
+    expect(formatTokens(3100)).toBe('3.1k')
+    expect(formatTokens(31_000)).toBe('31k')
+    expect(formatTokens(123_345)).toBe('123.3k')
+    expect(formatTokens(999_949)).toBe('999.9k')
+    expect(formatTokens(999_960)).toBe('1M')
+    expect(formatTokens(7_450_000)).toBe('7.45M')
+  })
+  test('美元两位小数', async () => {
+    expect(formatUsd(0.4)).toBe('$0.40')
+    expect(formatUsd(12.345)).toBe('$12.35')
+  })
+})
 
 describe('detectLang', () => {
   test('中文为主判为 zh，夹杂英文标识符也算', async () => {
@@ -161,10 +182,10 @@ describe('cacheTtlFromTranscript / cacheHint / nextCacheChange', () => {
   })
 
   test('10 分钟以上是 fresh，以内是 low，过期是 expired；不是今天的不显示', async () => {
-    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存 60 分', tone: 'fresh' })
-    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'en')).toEqual({ text: 'cache 60m', tone: 'fresh' })
-    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存 10 分', tone: 'low' })
-    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'cache 5m', tone: 'low' })
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'zh')).toEqual({ text: '缓存剩60分', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 30_000, 480, 'en')).toEqual({ text: 'cache 60m left', tone: 'fresh' })
+    expect(cacheHint(state(3_600_000), at + 50 * 60_000, 480, 'zh')).toEqual({ text: '缓存剩10分', tone: 'low' })
+    expect(cacheHint(state(300_000), at + 10_000, 480, 'en')).toEqual({ text: 'cache 5m left', tone: 'low' })
     expect(cacheHint(state(300_000), at + 300_000, 480, 'zh')).toEqual({ text: '缓存过期', tone: 'expired' })
     expect(cacheHint({ ...state(3_600_000), model: 'sonnet' }, at, 480, 'en')).toEqual({ text: 'cache expired', tone: 'expired' })
     // 本机时间 17:00 用的缓存，到第二天 00:10 不再显示
