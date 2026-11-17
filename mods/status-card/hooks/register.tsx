@@ -3,7 +3,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register } from 'claude-code'
 
-import type { CacheState, DetailView, Lang, SessionRecord, TurnProgress, TurnStats } from '../types'
+import type { CacheState, DetailView, Lang, SessionRecord, TurnProgress, TurnStats, UsageStats } from '../types'
 import {
   cacheHint,
   cacheTtlFromTranscript,
@@ -14,6 +14,8 @@ import {
   formatElapsed,
   formatStats,
   formatTime,
+  formatTokens,
+  formatUsd,
   intentRequest,
   isExpired,
   isTypedPrompt,
@@ -24,9 +26,11 @@ import {
   parseIntent,
   parseOffset,
   parseSummary,
+  parseUsageScan,
   resolveLang,
   retentionDaysFrom,
   summaryRequest,
+  USAGE_SCAN,
 } from './recap'
 
 type Engine = EngineInterface
@@ -55,6 +59,8 @@ const detailView = atom({ plugin: 'status-card', key: 'detail' } as const, null 
 const transcriptPath = atom({ plugin: 'status-card', key: 'transcriptPath' } as const, '')
 // 不放进 SessionRecord：摘要在后台慢慢生成，写回记录时会盖掉这期间更新的缓存状态
 const cacheAtom = atom({ plugin: 'status-card', key: 'cache' } as const, null as CacheState | null)
+// 不存 store：每次启动从 transcript 和 $.session.usage() 重新算，恢复的会话引擎会接着原来的美元累计
+const usageAtom = atom({ plugin: 'status-card', key: 'usage' } as const, null as UsageStats | null)
 
 type Settings = {
   language: unknown
@@ -231,6 +237,30 @@ async function scheduleCacheTick($: Engine): Promise<void> {
   })
 }
 
+// 压缩次数和 output tokens 只认 transcript；读不到时保留上一次的数，不清零
+async function refreshUsage($: Engine): Promise<void> {
+  const previous = await read($, usageAtom)
+  let counted: { compactions: number; outputTokens: number } | undefined
+  const path = await read($, transcriptPath)
+  if (path) {
+    try {
+      counted = parseUsageScan((await $.process.run(['sh', '-c', USAGE_SCAN, 'usage-scan', path])).stdout)
+    } catch {
+      // 用上一次的数
+    }
+  }
+  let costUsd = previous?.costUsd
+  try {
+    costUsd = (await $.session.usage()).cost?.usd ?? costUsd
+  } catch {
+    // 用上一次的数
+  }
+  const compactions = counted?.compactions ?? previous?.compactions
+  const outputTokens = counted?.outputTokens ?? previous?.outputTokens
+  if (compactions === undefined || outputTokens === undefined) return
+  await update($, usageAtom, () => ({ compactions, outputTokens, costUsd }))
+}
+
 async function summarize($: Engine, answer: string, stats: TurnStats | undefined, turn: number | undefined): Promise<void> {
   const previous = await lastRecap($)
   const messages = await $.session.messages()
@@ -311,6 +341,8 @@ export const register: Register = (on, options) => {
     await restoreCache($)
     const folded = await $.store.get(FOLDED_KEY)
     if (typeof folded === 'boolean') await update($, isFolded, () => folded)
+    // 热重载时 transcript 路径还在，这里就能算；新启动的会话等 classic.SessionStart 给了路径再算
+    await refreshUsage($)
     return result
   })
 
@@ -320,6 +352,7 @@ export const register: Register = (on, options) => {
     await update($, transcriptPath, () => e.transcript_path)
     if (!(await read($, recordAtom))) await restoreRecord($)
     if (!(await read($, cacheAtom))) await restoreCache($)
+    await refreshUsage($)
     return result
   })
 
@@ -347,8 +380,19 @@ export const register: Register = (on, options) => {
       await update($, transcriptPath, () => '')
       await update($, cacheAtom, () => null)
       cacheTimer?.cancel()
+      await update($, usageAtom, () => null)
       await update($, detailView, () => null)
       await update($, isExpanded, () => false)
+    }
+    return result
+  })
+
+  // 只观察：主线程真正换掉上下文后重数压缩次数。precompute 只是预先写好摘要（如闲置约 54 分钟时），要到下次压缩才用上，不算。
+  // 手动 /compact 不一定有 turn.complete 跟着，所以在这里数；稍等一下，让压缩记录先写进 transcript
+  on('session.compact', async ($, e, next) => {
+    const result = await next(e)
+    if (!e.agentId && e.trigger !== 'precompute' && result.messages) {
+      $.clock.after(1000, () => void refreshUsage($))
     }
     return result
   })
@@ -413,6 +457,7 @@ export const register: Register = (on, options) => {
       await update($, progress, () => null)
       await recordCache($)
       await scheduleCacheTick($)
+      await refreshUsage($)
       // 统计先写进记录，摘要还在生成时第二行右侧就已经是这一轮的最终数字
       const record = await read($, recordAtom)
       if (record?.draft) {
@@ -445,7 +490,7 @@ export const register: Register = (on, options) => {
     // 读 clockNow 是为了让空闲时的定时刷新重画卡片；缓存提示只在轮到你时显示
     await read($, clockNow)
     const cache = isWorking ? undefined : cacheHint(await read($, cacheAtom), now, offsetMinutes, record.lang)
-    // 右上角是轮次和时间，时间只在当天显示：工作中是正在进行的这一轮和你发出消息的时间，轮到你时是上一轮和摘要更新的时间
+    // 第一行右侧是轮次和时间，时间只在当天显示：工作中是正在进行的这一轮和你发出消息的时间，轮到你时是上一轮和摘要更新的时间
     const updatedAt = settings.showMeta ? formatTime(turnProgress?.startedAt ?? record.updatedAt, now, offsetMinutes) : ''
     const meta = settings.showMeta ? [L.turn(turnProgress?.turn ?? record.turn), updatedAt].filter(part => part !== '').join(' · ') : ''
     const goal = record.draft ? L.goalPending : record.recap.goal
@@ -461,17 +506,28 @@ export const register: Register = (on, options) => {
         }
       : record.stats
     const progressStats = stats ? formatStats(stats, record.lang) : ''
+    // 会话累计：第一行右侧轮次前的压缩次数（没压缩过不显示），第二行右侧用时后面的 output tokens 和折算美元；一轮结束时更新
+    const usage = await read($, usageAtom)
+    const compactText = usage && usage.compactions > 0 ? L.compacted(usage.compactions) : ''
+    const headline = [compactText, meta].filter(part => part !== '').join(' · ')
+    const totals = [
+      progressStats,
+      usage ? formatTokens(usage.outputTokens) : '',
+      usage?.costUsd !== undefined ? formatUsd(usage.costUsd) : '',
+    ]
+      .filter(part => part !== '')
+      .join(' · ')
     // 第二行：工作中是「本轮：…」（重载后丢了这一轮的进度时退回上一份摘要），结束后是这一轮做了什么
     const nowText = turnProgress ? `${L.thisTurn}${L.sep}${turnProgress.intent || L.thinking}` : record.recap.now
 
-    // 右上角的暗色文字，轮到你时后面跟缓存提示；缓存不到 10 分钟时这段提示用红色
-    const metaText = (prefix: string) => {
+    // 缓存提示只在轮到你时有：展开时在第三行右侧，胶囊里跟在时间后面；不到 10 分钟时用红色
+    const cacheText = cache && (cache.tone === 'low' ? <Text color="error">{cache.text}</Text> : <Text dimColor>{cache.text}</Text>)
+    const capsuleMetaText = (prefix: string) => {
       if (cache?.tone !== 'low') {
         const text = [prefix, cache?.text ?? ''].filter(part => part !== '').join(' · ')
         return text === '' ? undefined : <Text dimColor>{text}</Text>
       }
-      const warning = <Text color="error">{cache.text}</Text>
-      return prefix === '' ? warning : <Text><Text dimColor>{`${prefix} · `}</Text>{warning}</Text>
+      return prefix === '' ? cacheText : <Text><Text dimColor>{`${prefix} · `}</Text>{cacheText}</Text>
     }
 
     if (await read($, isFolded)) {
@@ -497,7 +553,7 @@ export const register: Register = (on, options) => {
                 : <Text wrap="truncate-end">{capsuleText}</Text>}
             </Box>
             <Box flexDirection="row" flexShrink={0} gap={1}>
-              {metaText(capsuleMeta)}
+              {capsuleMetaText(capsuleMeta)}
               <Button key="unfold" plain label={L.unfold} onPress={() => setFolded($, false)} />
             </Box>
           </Box>
@@ -508,7 +564,7 @@ export const register: Register = (on, options) => {
 
     const expanded = await read($, isExpanded)
     const detail = expanded ? await read($, detailView) : null
-    // 第三行只在等你时有内容：工作中第二行已经说了在做什么，空闲时没有要你处理的事
+    // 第三行左侧只在等你时有内容：工作中第二行已经说了在做什么，空闲时没有要你处理的事；右侧是缓存提示和按钮
     const actionLine = isWaiting
       ? <Text color={settings.waitingColor} wrap="truncate-end">{`⏳ ${L.waiting}${L.sep}${record.recap.waiting}`}</Text>
       : <Text>{' '}</Text>
@@ -522,7 +578,11 @@ export const register: Register = (on, options) => {
                 ? <Text dimColor wrap="truncate-end">{`🎯 ${goal}`}</Text>
                 : <Text bold wrap="truncate-end">{`🎯 ${goal}`}</Text>}
             </Box>
-            {(meta !== '' || cache) && <Box flexShrink={0}>{metaText(meta)}</Box>}
+            {headline !== '' && (
+              <Box flexShrink={0}>
+                <Text dimColor>{headline}</Text>
+              </Box>
+            )}
           </Box>
           <Box flexDirection="row" justifyContent="space-between" gap={2}>
             <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">
@@ -531,15 +591,17 @@ export const register: Register = (on, options) => {
                 {nowText}
               </Text>
             </Box>
-            {progressStats !== '' && (
+            {totals !== '' && (
               <Box flexShrink={0}>
-                <Text dimColor>{progressStats}</Text>
+                <Text dimColor>{totals}</Text>
               </Box>
             )}
           </Box>
           <Box flexDirection="row" justifyContent="space-between" gap={2}>
             <Box flexGrow={1} flexShrink={1} minWidth={0} overflow="hidden">{actionLine}</Box>
-            <Box flexDirection="row" flexShrink={0} gap={2}>
+            {/* 缓存提示和两个按钮挨得紧一些：desktop 的按钮自带内边距，间距再大右侧会占掉太多宽度 */}
+            <Box flexDirection="row" flexShrink={0} gap={1}>
+              {cacheText}
               <Button key="detail" plain onPress={() => setExpanded($, !expanded)}>
                 {expanded ? L.collapse : L.expand}
               </Button>

@@ -1,6 +1,6 @@
 {
   "name": "status-card",
-  "version": "0.7.9",
+  "version": "0.8.4",
   "description": "输入框上方的会话摘要卡片：目标、现在、下一步、等你处理的事。跨重启保留，回看旧会话也能看到；可展开详情、折叠成胶囊。",
   "author": {
     "name": "tyler4400",
@@ -71,7 +71,7 @@
       "type": "boolean",
       "title": "显示轮次和时间",
       "default": true,
-      "description": "卡片右上角的\"第 N 轮 · 时间\""
+      "description": "卡片第一行右侧的\"第N轮 · 时间\""
     },
     "retentionDays": {
       "type": "number",

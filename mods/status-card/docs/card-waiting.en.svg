@@ -2,14 +2,13 @@
 <rect width="960" height="240" rx="14" fill="#30302e"/>
 <rect x="16" y="16" width="928" height="208" rx="10" fill="#262624" stroke="#d4943a" stroke-width="1.5"/>
 <text x="36" y="48" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">🎯 Add rate limiting to the public API</text>
-<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">cache 45m</text>
-<text x="840.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">turn 14 · 16:20</text>
-<text x="861.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end"> · </text>
+<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">1 compaction · turn 14 · 16:20</text>
 <text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ Wired the limiter into the gateway and added tests</text>
-<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">2m41s</text>
+<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">2m41s · 48.2k · $3.27</text>
 <text x="36" y="120" fill="#d4943a" font-size="14" text-anchor="start">⏳ waiting on you: Pick a default limit, 60 or 120 requests per minute</text>
 <text x="924" y="120" fill="#ececea" font-size="14" text-anchor="end">Fold</text>
-<text x="868.0" y="120" fill="#ececea" font-size="14" text-anchor="end">Hide</text>
+<text x="878.0" y="120" fill="#ececea" font-size="14" text-anchor="end">Hide</text>
+<text x="832.0" y="120" fill="#8f8f8a" font-size="14" text-anchor="end">cache 45m left</text>
 <text x="36" y="156" fill="#cfcfca" font-size="14" text-anchor="start">This session adds rate limiting to the public API so one client can no longer slow everyone down. The token-bucket limiter is</text>
 <text x="36" y="180" fill="#cfcfca" font-size="14" text-anchor="start">in the gateway with tests passing; only the default limit is still open. Next: pick the limit, update the docs, then open a</text>
 <text x="36" y="204" fill="#cfcfca" font-size="14" text-anchor="start">PR.</text>

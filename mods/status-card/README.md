@@ -18,17 +18,75 @@ The screenshots are drawn from sample data by [docs/render_screenshots.py](docs/
 
 Always three lines:
 
-1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **turn N · last update** (while working, N is the turn in progress and the time is when you sent its message; the time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time). When it is your turn, the **cache hint** follows the time; see below.
-2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. On the right: the **elapsed time**. It ticks every second while Claude works, then keeps the turn's final time, even after a restart. The line is at most 60 characters. It does not repeat the per-tool status Claude Code already shows.
-3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **Details** and **Fold** buttons.
+```
+🎯 Goal…                                 2 compactions · turn 12 · 14:32
+✅ What this turn did…                            2m41s · 31k · $12.34
+⏳ waiting on you: …                      cache 38m left  Details  Fold
+```
 
-When the window gets narrow, the turn, time, cache hint, stats and buttons on the right stay whole and the text on the left is cut instead.
+1. **🎯 Goal**: the mainline of the whole session. It changes only when you move on to different work. On the right: **N compactions · turn N · last update**:
+   - The **compaction count** is left out until the first compaction; see [How the session totals are counted](#how-the-session-totals-are-counted).
+   - While Claude works, N is the turn in progress and the time is when you sent its message; when it is your turn, they are the last turn and when its recap was written.
+   - The time shows as `HH:mm` on the same day only and is left out on other days, since every reply in the conversation already carries its date and time.
+2. **Now**: while Claude works, a dot in the working colour and **This turn: what it is doing**, in one phrase (`thinking ...` until that phrase is written); after the turn, **✅** and what the turn did. The line is at most 60 characters and does not repeat the per-tool status Claude Code already shows. On the right: **elapsed time · total output tokens · cost in dollars**:
+   - The **elapsed time** ticks every second while Claude works, then keeps the turn's final time, even after a restart.
+   - **Output tokens** and **dollars** are totals for the whole session; see [How the session totals are counted](#how-the-session-totals-are-counted).
+3. **⏳ waiting on you**: what Claude needs from you. Empty while Claude works (line 2 already says what it is doing) and when nothing waits on you. On the right: the **cache hint** (see below), then the **Details** and **Fold** buttons.
 
-- **Cache hint**: how long Claude's prompt cache has left, as plain text: dim `cache 45m` with more than 10 minutes left, red `cache 6m` within 10 minutes, and dim `cache expired` once it lapses. Carrying on while the cache is warm saves rewriting the whole context into it. It counts from when the main thread's last request was sent; the lifetime (5 minutes or 1 hour) is read from this session's transcript, and when it cannot be read the hint is not shown. It is kept per model: switching to a model this session has not used yet shows it expired, and switching back shows the original model's time left. A cache last used on another day (say, looking back at yesterday's session) is not shown. Shown only when it is your turn, not while Claude works.
+When the window gets narrow, everything on the right stays whole and the text on the left is cut instead.
+
+- **Cache hint**: how long Claude's prompt cache has left, as plain text: dim `cache 45m left` with more than 10 minutes left, red `cache 6m left` within 10 minutes, and dim `cache expired` once it lapses. Carrying on while the cache is warm saves rewriting the whole context into it. It counts from when the main thread's last request was sent; the lifetime (5 minutes or 1 hour) is read from this session's transcript, and when it cannot be read the hint is not shown. It is kept per model: switching to a model this session has not used yet shows it expired, and switching back shows the original model's time left. A cache last used on another day (say, looking back at yesterday's session) is not shown. Shown only when it is your turn, not while Claude works.
 
 - **The border colour** shows the state: working, waiting on you, or idle.
 - **Details**: for when you come back and have forgotten what the session was about. One paragraph of two or three sentences (at most 90 English words or 180 Chinese characters): the mainline and why, how far it got, and what to do next, including to-dos agreed but not done yet. It starts from the mainline, not from the latest small problem. It is drawn in the card only and **never enters the conversation**. It is cached per turn and only rewritten after a new turn; while it is open, a new turn refreshes it.
-- **Fold**: shrinks the card to a one-line capsule showing one thing: while Claude works, a dot in the working colour and what it is doing this turn; when something waits on you, ⏳ and what it is; otherwise ✅ and the goal; on the right, without the turn, the update time, then the elapsed time while Claude works or the cache hint when it is your turn, and an **Unfold** button. The capsule spans the full line with the right-hand items at the right edge; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
+- **Fold**: shrinks the card to a one-line capsule showing one thing: while Claude works, a dot in the working colour and what it is doing this turn; when something waits on you, ⏳ and what it is; otherwise ✅ and the goal; on the right, without the turn or the session totals, the update time, then the elapsed time while Claude works or the cache hint when it is your turn, and an **Unfold** button. The capsule spans the full line with the right-hand items at the right edge; when it does not fit, the text on the left is cut first. The fold state is kept across sessions.
+
+## How the session totals are counted
+
+The three running figures on the card cover the whole session, not the current turn.
+
+| Figure | Where | Source |
+|---|---|---|
+| Compactions | right of line 1, such as `2 compactions` | compaction records in the main transcript |
+| Output tokens | right of line 2, after the elapsed time, such as `31k` | the sum of each reply's `output_tokens` in the main and subagent transcripts |
+| Dollars | far right of line 2, such as `$12.34` | `cost.usd` from `$.session.usage()` |
+
+### When they update
+
+- When the session starts or the mod hot-reloads, and when `classic.SessionStart` hands over the transcript path.
+- When each main-thread turn ends (`turn.complete`; subagent turns do not count).
+- About a second after the main thread compacts (`session.compact`, except `precompute`). A `/compact` is not always followed by the end of a turn, so it gets its own update; the one-second wait lets the compaction record reach the transcript first.
+
+While Claude works the three figures stay as they are and update together when the turn ends.
+
+### Compactions
+
+- The count of lines with `"subtype":"compact_boundary"` in `~/.claude/projects/<project>/<session id>.jsonl`. Claude Code writes one each time it compacts the context.
+- `/compact` and automatic compaction both count; the trigger makes no difference.
+- **Compaction while idle**: in a session on the one-hour prompt cache, after about 54 idle minutes (90% of the cache lifetime) and with 200K tokens of context or more, Claude Code writes a summary in the background. That step does not replace the context, so it does not count. When you next send a message and the cache has expired, Claude Code compacts with that summary and writes the record, and the count goes up then.
+- Only the main transcript is counted; a subagent's own compactions are not.
+
+### Output tokens
+
+- Every `"type":"assistant"` line in the main transcript and in `<session id>/subagents/*.jsonl` is read for `message.id` and `message.usage.output_tokens`.
+- One reply is written as several lines (one per content block), each with the same usage, so **each message id counts once**. In one measured session, 94 reply lines held 49 distinct ids; without that, the total would come out nearly double.
+- Only output counts: not input, cache writes or cache reads. Cache reads re-read the same prefix every turn, so counting them would make the figure climb steeply without showing how much was newly produced.
+- Left out: the calls Claude Code makes to write compaction summaries, and mods' own model calls (such as the haiku calls of this card and session-title). None of them is written to the transcript.
+- Shown as is below 1000, then in `k` with one decimal or `M` with two, trailing zeros dropped: `856`, `3.1k`, `31k`, `7.45M`.
+
+### Dollars
+
+- `cost.usd` from `$.session.usage()`: the running total `/cost` shows. Each time an API response arrives, Claude Code prices its tokens with the model's price list and adds the result, **on a subscription too**, so this is the API-price equivalent, not what is billed. Where an organization has its own price list, that list is used.
+- It includes mods' model calls (such as this card's haiku), but not a few internal helper calls Claude Code keeps on a separate ledger.
+- A resumed session carries on from its earlier total.
+- Shown with two decimals, such as `$0.42` or `$12.34`. Left out when the host does not report it.
+
+### Implementation details
+
+- One `sh` call does both counts: `grep -c` counts the compaction records; `cat` streams the main and subagent transcripts, `grep` keeps the reply lines, and `sed` prints only each message id and its output tokens, which the mod then de-duplicates and adds up. Only those fields are printed because a long session's transcript can run to tens of megabytes, while `$.process.run` reads back at most 4 MiB. A 45 MB transcript takes about half a second.
+- Quotes inside JSON strings are escaped as `\"`, so text such as `"output_tokens":` inside the conversation is never mistaken for a field. Nested objects in usage such as `iterations` carry their own `output_tokens`; only the top-level one in usage is read.
+- The figures are not kept in `$.store`; they are worked out again at every start. When the transcript cannot be read, the last figures stay; when it has never been read, the compaction count and tokens are not shown.
+- A session opened by forking or as a side chat starts with entries copied from the original, so its compaction count and tokens include the original's.
 
 ## Install
 
@@ -67,7 +125,7 @@ Change these in `/config` or `/plugin configure status-card@tyler-claude-mods`. 
 | `idleColor` | `success` | Colour while idle |
 | `borderStyle` | `round` | Card border: `round`, `single`, `bold`, `double`, `none` |
 | `density` | `comfortable` | Line spacing: `comfortable` leaves a blank row between lines; `compact` does not |
-| `showMeta` | `true` | Show "turn N · time" |
+| `showMeta` | `true` | Show "turn N · time" on the right of line 1 |
 | `retentionDays` | `180` | Recaps not updated for this many days are removed; `-1` never removes them |
 
 ## How it works
@@ -92,9 +150,9 @@ These are real model requests and count toward your usage.
 
 Records are keyed by session id: resuming and compaction keep the id, so the card comes back as it was. A session opened by forking, or by right-clicking and choosing Start a side chat, gets a new id; its transcript starts with entries copied from the original, which still carry the original session's id, so status-card copies the original's card and the two update separately from then on. Records 0.5.x stored under a fingerprint of the working directory and first message are migrated only through the session-id mapping recorded at the time.
 
-**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write (kept in the stored stats, no longer shown). It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. It makes no other network requests and otherwise reads or writes no files outside its store.
+**What it does and does not do:** the `tool.call` hook only watches. Every call goes through unchanged; it counts calls and the files edited by Edit or Write (kept in the stored stats, no longer shown). It does not change your messages or Claude's replies. Apart from the model calls above, it runs `date +%z` once per session to get the local time zone, and, when the current session has no card yet, `grep`s the `sessionId` values out of that session's own transcript to find the original session of a fork or side chat; at the end of each turn it runs `grep` and `tail` to read the last few transcript lines containing `ephemeral_`, which give the lifetime the request wrote the prompt cache with. When the session starts, after each turn and after each compaction, it runs `grep`, `cat` and `sed` in `sh` to pull only the compaction-record count and each reply's message id and `output_tokens` out of the transcript and `subagents/*.jsonl`, and calls `$.session.usage()` for the cost so far. It makes no other network requests and otherwise reads or writes no files outside its store.
 
-Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `classic.PostModelSwitch`, `session.end`, `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
+Hooks: `session.start`, `classic.SessionStart`, `classic.UserPromptSubmit`, `classic.PostModelSwitch`, `session.end`, `session.compact` (only watches; every compaction goes through unchanged), `prompt.submit`, `tool.call`, `turn.step` (only to note when each request is sent), `turn.complete`, `ui.render` (`AbovePrompt`).
 
 ## Limitations
 

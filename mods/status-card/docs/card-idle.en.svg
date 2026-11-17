@@ -2,12 +2,11 @@
 <rect width="960" height="160" rx="14" fill="#30302e"/>
 <rect x="16" y="16" width="928" height="128" rx="10" fill="#262624" stroke="#4caf50" stroke-width="1.5"/>
 <text x="36" y="48" fill="#ececea" font-size="14" text-anchor="start" font-weight="600">🎯 Add rate limiting to the public API</text>
-<text x="924" y="48" fill="#e5534b" font-size="14" text-anchor="end">cache 6m</text>
-<text x="847.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">turn 15 · 16:32</text>
-<text x="868.0" y="48" fill="#8f8f8a" font-size="14" text-anchor="end"> · </text>
+<text x="924" y="48" fill="#8f8f8a" font-size="14" text-anchor="end">turn 15 · 16:32</text>
 <text x="36" y="84" fill="#ececea" font-size="14" text-anchor="start">✅ Set the default to 120 requests per minute and updated the docs</text>
-<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">1m05s</text>
+<text x="924" y="84" fill="#8f8f8a" font-size="14" text-anchor="end">1m05s · 52.6k · $3.41</text>
 <text x="36" y="120" fill="#8f8f8a" font-size="14" text-anchor="start"></text>
 <text x="924" y="120" fill="#ececea" font-size="14" text-anchor="end">Fold</text>
-<text x="868.0" y="120" fill="#ececea" font-size="14" text-anchor="end">Details</text>
+<text x="878.0" y="120" fill="#ececea" font-size="14" text-anchor="end">Details</text>
+<text x="811.0" y="120" fill="#e5534b" font-size="14" text-anchor="end">cache 6m left</text>
 </svg>

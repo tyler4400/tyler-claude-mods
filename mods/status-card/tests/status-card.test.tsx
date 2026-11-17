@@ -4,8 +4,9 @@ const BAND = { component: 'AbovePrompt', props: { hasSurvey: false, isWorking: f
 
 const SUMMARY = '{"goal":"让摘要跨重启保留","now":"写完卡片","waiting":"你确认样式","next":"跑测试","overall":"fork 了 status-card"}'
 
-// 测试里可以切换的 session：id、transcript 里 grep 出的 sessionId 行、模型返回的摘要、transcript 里含 ephemeral_ 的行
-type Ctx = { sessionId: string; transcript: string[]; summary: string; cacheLines?: string }
+// 测试里可以切换的 session：id、transcript 里 grep 出的 sessionId 行、模型返回的摘要、transcript 里含 ephemeral_ 的行、
+// 累计统计脚本的输出、$.session.usage() 的美元
+type Ctx = { sessionId: string; transcript: string[]; summary: string; cacheLines?: string; usageScan?: string; costUsd?: number }
 
 // 代替 mod 下面的引擎
 function engine(on: any, store: Map<string, unknown>, ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY }) {
@@ -20,10 +21,15 @@ function engine(on: any, store: Map<string, unknown>, ctx: Ctx = { sessionId: 's
       e.argv[0] === 'grep'
         ? ctx.transcript.map(id => `"sessionId":"${id}"\n`).join('')
         : e.argv[0] === 'sh'
-          ? (ctx.cacheLines ?? '')
+          ? e.argv[3] === 'usage-scan'
+            ? (ctx.usageScan ?? '')
+            : (ctx.cacheLines ?? '')
           : '+0800\n'
     return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
   })
+  on('session.usage', () => ({
+    value: { startedAt: 0, context: { window: 200_000 }, rateLimits: [], ...(ctx.costUsd !== undefined && { cost: { usd: ctx.costUsd } }) },
+  }))
   on('classic.SessionStart', () => ({}))
   on('classic.PostModelSwitch', () => ({}))
   on('classic.UserPromptSubmit', () => ({}))
@@ -96,7 +102,7 @@ describe('status-card', () => {
     expect(await ui.find({ type: 'Text', text: /让摘要跨重启保留/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /等你：你确认样式/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^✅ 写完卡片$/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第1轮 · 17:00$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /band below/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
     await ui.unmount()
@@ -118,7 +124,7 @@ describe('status-card', () => {
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /旧会话的目标/ })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: /第 7 轮/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /第7轮/ })).toBeDefined()
     // 没有等你处理的事时第三行不显示下一步
     expect(await ui.find({ type: 'Text', text: /下一步/ })).toBeUndefined()
     expect(await ui.find({ type: 'Text', text: /^✅ 做到一半$/ })).toBeDefined()
@@ -181,7 +187,7 @@ describe('status-card', () => {
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
     expect(await ui.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
     // 轮次是正在进行的这一轮，时间是你发出消息的时间
-    expect(await ui.find({ type: 'Text', text: /^第 2 轮 · 17:05$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第2轮 · 17:05$/ })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: /^1分32秒$/ })).toBeDefined()
     // 折叠后，工作中的胶囊显示这一轮在做什么和实时用时
     await ui.press({ key: 'fold' })
@@ -195,7 +201,7 @@ describe('status-card', () => {
     await clock.settle()
     const idle = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await idle.find({ type: 'Text', text: /本轮/ })).toBeUndefined()
-    expect(await idle.find({ type: 'Text', text: /^第 2 轮 · 17:06$/ })).toBeDefined()
+    expect(await idle.find({ type: 'Text', text: /^第2轮 · 17:06$/ })).toBeDefined()
     // 轮到你时保留这一轮的最终统计，并写进 store
     expect(await idle.find({ type: 'Text', text: /^1分32秒$/ })).toBeDefined()
     await idle.unmount()
@@ -242,7 +248,7 @@ describe('status-card', () => {
     const working = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND, props: { ...BAND.props, isWorking: true } } as any)
     expect(await working.find({ type: 'Text', text: /^🎯 目标会在这一轮结束后总结$/ })).toBeDefined()
     expect(await working.find({ type: 'Text', text: /^● 本轮：把详情上限改成 180 字$/ })).toBeDefined()
-    expect(await working.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    expect(await working.find({ type: 'Text', text: /^第1轮 · 17:00$/ })).toBeDefined()
     await working.unmount()
     // 占位卡片不写进 store
     expect(store.has('rec:s1')).toBe(false)
@@ -256,7 +262,7 @@ describe('status-card', () => {
     await clock.settle()
     const done = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await done.find({ type: 'Text', text: /^🎯 让摘要跨重启保留$/ })).toBeDefined()
-    expect(await done.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    expect(await done.find({ type: 'Text', text: /^第1轮 · 17:00$/ })).toBeDefined()
     await done.unmount()
   })
 
@@ -375,37 +381,37 @@ describe('status-card', () => {
     })
 
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    // 缓存从请求发出时算起，还剩 59 分 30 秒，向上取整
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存 60 分$/ })).toBeDefined()
+    // 缓存从请求发出时算起，还剩 59 分 30 秒，向上取整；轮次和时间在第三行
+    expect(await ui.find({ type: 'Text', text: /^缓存剩60分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第1轮 · 17:00$/ })).toBeDefined()
     // 折叠后右侧是时间和缓存，不再显示用时
     await ui.press({ key: 'fold' })
-    expect(await ui.find({ type: 'Text', text: /^17:00 · 缓存 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^17:00 · 缓存剩60分$/ })).toBeDefined()
     await ui.press({ key: 'unfold' })
     await ui.unmount()
 
     // 切到这次还没用过的模型算过期，切回来继续显示原模型的剩余时间
     await $.classic.PostModelSwitch({ to_model: 'claude-sonnet-5-5' } as any)
     let view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存过期$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: /^缓存过期$/ })).toBeDefined()
     await view.unmount()
     await $.classic.PostModelSwitch({ to_model: 'claude-opus-5-5[1m]' } as any)
     await clock.advance(50 * 60_000)
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    // 10 分钟以内单独标红
-    expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · $/ })).toBeDefined()
-    expect(await view.find({ type: 'Text', text: /^缓存 10 分$/ })).toBeDefined()
+    // 10 分钟以内标红
+    expect((await view.find({ type: 'Text', text: /^缓存剩10分$/ }))?.props.color).toBe('error')
     await view.unmount()
 
     await clock.advance(10 * 60_000)
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await view.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存过期$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: /^缓存过期$/ })).toBeDefined()
     await view.unmount()
 
     // 第二天（本机时间 00:10）缓存提示和更新时间都不再显示
     await clock.set(Date.UTC(2026, 9, 13, 16, 10))
     view = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await view.find({ type: 'Text', text: /缓存/ })).toBeUndefined()
-    expect(await view.find({ type: 'Text', text: /^第 1 轮$/ })).toBeDefined()
+    expect(await view.find({ type: 'Text', text: /^第1轮$/ })).toBeDefined()
     await view.unmount()
   })
 
@@ -422,7 +428,7 @@ describe('status-card', () => {
     await $.turn.complete({ reason: 'answer', answer: '已完成', durationMs: 1 } as any)
     await clock.settle()
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00 · 缓存 60 分$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^缓存剩60分$/ })).toBeDefined()
     await ui.unmount()
   })
 
@@ -474,7 +480,64 @@ describe('status-card', () => {
     await clock.settle()
     const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
     expect(await ui.find({ type: 'Text', text: /缓存/ })).toBeUndefined()
-    expect(await ui.find({ type: 'Text', text: /^第 1 轮 · 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^第1轮 · 17:00$/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('第一行显示压缩次数（没压缩过不显示），第二行在用时后显示累计 output tokens 和美元', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, usageScan: 'C 0\nM msg_a 3000\nM msg_a 3000\nM msg_b 100\n', costUsd: 12.345 }
+    const clock = engine(on, store, ctx)
+    on('session.compact', (_$: any, e: any) => ({ messages: e.messages }))
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.SessionStart({ source: 'startup', transcript_path: '/t/s1.jsonl' } as any)
+    await oneTurn($, clock)
+
+    let ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^0秒 · 3\.1k · \$12\.35$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /压缩/ })).toBeUndefined()
+    await ui.unmount()
+
+    // 手动 /compact 之后不等下一轮结束，稍后重数一次
+    ctx.usageScan = 'C 2\nM msg_a 3000\n'
+    ctx.costUsd = 13
+    await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: '总结一下', toolUses: [] }] } as any)
+    await clock.advance(1000)
+    await clock.settle()
+    ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^已压缩2次 · 第1轮 · 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^0秒 · 3k · \$13\.00$/ })).toBeDefined()
+    await ui.unmount()
+
+    // 闲置时预先写摘要（precompute）不算压缩
+    ctx.usageScan = 'C 3\n'
+    await $.session.compact({ trigger: 'precompute', messages: [{ role: 'user', text: '总结一下', toolUses: [] }] } as any)
+    await clock.advance(1000)
+    await clock.settle()
+    ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^已压缩2次 · 第1轮 · 17:00$/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('英文会话：第一行压缩次数和轮次，第二行用时、tokens、美元，第三行缓存提示', async ($, on) => {
+    const store = new Map<string, unknown>()
+    const cacheLine = JSON.stringify({ type: 'assistant', isSidechain: false, message: { model: 'claude-opus-5-5', usage: { cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 900 } } } })
+    const ctx: Ctx = { sessionId: 's1', transcript: [], summary: SUMMARY, cacheLines: cacheLine, usageScan: 'C 1\nM msg_a 7450000\n', costUsd: 0.4 }
+    const clock = engine(on, store, ctx)
+    await $.session.start({ surface: 'desktop', isInteractive: true, cwd: '/work' } as any)
+    await $.classic.SessionStart({ source: 'startup', transcript_path: '/t/s1.jsonl' } as any)
+    await $.prompt.submit({ text: 'Please make the recap a card with style E' } as any)
+    for await (const _ of $.turn.step({ turnId: 't1', index: 0, model: 'claude-opus-5-5', messageCount: 1 } as any)) {
+      // 只需要跑完这一步
+    }
+    await clock.advance(30_000)
+    await $.turn.complete({ reason: 'answer', answer: 'Done', durationMs: 1 } as any)
+    await clock.settle()
+
+    const ui = await $.ui.mount({ plugin: 'status-card', surface: 'desktop', ...BAND } as any)
+    expect(await ui.find({ type: 'Text', text: /^1 compaction · turn 1 · 17:00$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^30s · 7\.45M · \$0\.40$/ })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: /^cache 60m left$/ })).toBeDefined()
     await ui.unmount()
   })
 })

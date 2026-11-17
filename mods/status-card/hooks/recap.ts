@@ -10,7 +10,7 @@ const OVERALL_MAX = 400
 
 const LABELS = {
   zh: {
-    turn: (n: number) => `第 ${n} 轮`,
+    turn: (n: number) => `第${n}轮`,
     sep: '：',
     thisTurn: '本轮',
     thinking: 'thinking ...',
@@ -23,8 +23,9 @@ const LABELS = {
     failed: '详情生成失败，稍后再试。',
     noRecap: '还没有摘要，等这一轮结束后再试。',
     goalPending: '目标会在这一轮结束后总结',
-    cacheLeft: (minutes: number) => `缓存 ${minutes} 分`,
+    cacheLeft: (minutes: number) => `缓存剩${minutes}分`,
     cacheExpired: '缓存过期',
+    compacted: (n: number) => `已压缩${n}次`,
   },
   en: {
     turn: (n: number) => `turn ${n}`,
@@ -40,8 +41,9 @@ const LABELS = {
     failed: 'Could not write the details. Try again later.',
     noRecap: 'No recap yet. Try again after this turn ends.',
     goalPending: 'The goal is summarized when this turn ends',
-    cacheLeft: (minutes: number) => `cache ${minutes}m`,
+    cacheLeft: (minutes: number) => `cache ${minutes}m left`,
     cacheExpired: 'cache expired',
+    compacted: (n: number) => (n === 1 ? '1 compaction' : `${n} compactions`),
   },
 }
 
@@ -363,4 +365,43 @@ export function nextCacheChange(state: CacheState | null, now: number): number |
   const left = cacheLeftMs(entry, now)
   if (left <= 0) return undefined
   return left % MINUTE_MS || MINUTE_MS
+}
+
+/**
+ * 读 transcript 的脚本：先打印一行 `C <压缩次数>`，再给主 transcript 和 subagents/*.jsonl 里每行 assistant 记录打印 `M <message id> <output tokens>`。
+ * 只输出这几个字段：长会话的 transcript 有几十 MB，整行读回来会超过 $.process.run 的 4 MiB 上限。
+ * JSON 字符串里的引号都转义成了 \"，对话内容里出现同样的文字也匹配不上；
+ * usage 里的 iterations 等嵌套对象也有 output_tokens，用 [^}]* 只取 usage 第一层的那个
+ */
+export const USAGE_SCAN = [
+  'f="$1"; dir="${f%.jsonl}/subagents"',
+  `printf 'C %s\\n' "$(grep -c '"subtype":"compact_boundary"' "$f")"`,
+  `cat "$f" "$dir"/*.jsonl 2>/dev/null | grep -F '"type":"assistant"' | sed -n -E 's/.*"id":"(msg_[A-Za-z0-9_]+)".*"usage":\\{[^}]*"output_tokens":([0-9]+).*/M \\1 \\2/p'`,
+].join('\n')
+
+/** 汇总 USAGE_SCAN 的输出：同一条回复在 transcript 里会写成好几行，按 message id 只算一次 */
+export function parseUsageScan(stdout: string): { compactions: number; outputTokens: number } {
+  let compactions = 0
+  const byId = new Map<string, number>()
+  for (const line of stdout.split('\n')) {
+    const [kind, first, second] = line.trim().split(' ')
+    if (kind === 'C') compactions = Number(first) || 0
+    else if (kind === 'M' && first) byId.set(first, Math.max(byId.get(first) ?? 0, Number(second) || 0))
+  }
+  let outputTokens = 0
+  for (const tokens of byId.values()) outputTokens += tokens
+  return { compactions, outputTokens }
+}
+
+/** 1000 以下原样，往上用 k（一位小数）和 M（两位小数），去掉末尾的 0：3.1k、31k、7.45M */
+export function formatTokens(n: number): string {
+  const trimmed = (value: number, digits: number) => String(Number(value.toFixed(digits)))
+  if (n < 1000) return String(n)
+  // 从 999,950 起一位小数会进位成 1000k，直接换成 M
+  if (n < 999_950) return `${trimmed(n / 1000, 1)}k`
+  return `${trimmed(n / 1_000_000, 2)}M`
+}
+
+export function formatUsd(usd: number): string {
+  return `$${usd.toFixed(2)}`
 }
